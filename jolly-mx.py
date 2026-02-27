@@ -231,7 +231,7 @@ class Config:
 
     def setup_custom_logger(self, name, filename):
         logger = logging.getLogger(name)
-        formatter = logging.Formatter(fmt='%(asctime)s %(levelname)-8s %(message)s',
+        formatter = logging.Formatter(fmt='%(asctime)s;%(message)s',
                                     datefmt='%Y-%m-%d %H:%M:%S')
         logger.setLevel(logging.DEBUG)
         
@@ -375,8 +375,8 @@ class Config:
             log(f"\nGroup {server_name}", False, True)
             server_obj.print()
 
-    def print_log(self, email, target, mx):
-        self.logger.info( f"{email}\t{target}\t{mx}" )
+    def print_log(self, sender, recipient, mx_group):
+        self.logger.info( f"{sender};{recipient};{mx_group}" )
 
 
 config = Config()
@@ -525,20 +525,34 @@ def process_policy_request(request_data, conn, config, cache_ttl):
     recipient = request_data.get('recipient', '').lower()
 
     action = "DUNNO"
+    group_matched = "n/a"
     
     # 1. Check recipient rules first
     if action == "DUNNO" and recipient:
         mx, group = get_next_server_for_email(recipient, cache_ttl, rule_type="recipient_rules")
         if mx and mx != "NO RESULT":
             action = f"FILTER {mx}"
+            group_matched = group
 
     # 2. Check sender rules if no recipient rule matched
     if action == "DUNNO" and sender:
         mx, group = get_next_server_for_email(sender, cache_ttl, rule_type="sender_rules")
         if mx and mx != "NO RESULT":
             action = f"FILTER {mx}"
+            group_matched = group
 
-    log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action}", False, True)
+    # Log the decision to the specific log file
+    config.print_log(sender, recipient, group_matched)
+
+    # Check config.enabled
+    is_enabled = True
+    if hasattr(config.config, 'config') and hasattr(config.config.config, 'enabled'):
+        is_enabled = config.config.config.enabled
+
+    if not is_enabled:
+        action = "DUNNO"
+
+    log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action} (Enabled: {is_enabled}, MX Group: {group_matched})", False, True)
     send_response(conn, action)
 
 
@@ -637,7 +651,6 @@ def get_next_server_for_email(email, cache_ttl, rule_type):
             mx_server_group, default = config.test_domain_rules(email, domain, rule_type=rule_type)
 
     if mx_server_group == 'NO RESULT' and (default == 'NO RESULT' or not default):
-        config.print_log(email=f"{rule_type}:{email}", target=mx_server_group, mx='n/a')
         return "NO RESULT", mx_server_group
 
     if not mx_server_group:
@@ -649,7 +662,6 @@ def get_next_server_for_email(email, cache_ttl, rule_type):
         return False, mx_server_group
 
     mx = servers_obj.get_next(mx_server_group).address
-    config.print_log(email=f"{rule_type}:{email}", target=mx_server_group, mx=mx)
 
     return mx, mx_server_group
     

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+LOGFILE="/var/log/jolly-mx.log"
+
 # Ensure running as root
 if [ "$EUID" -ne 0 ]; then
   echo "Please run this script as root (e.g. using sudo)."
@@ -35,6 +37,10 @@ fi
 
 echo "[*] Modifying ownership for jolly-mx..."
 chown -R jolly-mx:jolly-mx "$DIR"
+
+echo "[*] Creating the log file..."
+touch "$LOGFILE"
+chown -R jolly-mx:jolly-mx "$LOGFILE"
 
 echo "[*] Setting up virtual environment..."
 # Run as jolly-mx so it owns the venv files

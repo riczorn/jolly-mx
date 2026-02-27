@@ -2,6 +2,13 @@
 # The service will look for this file in /etc/postfix/jolly-mx.yaml first, 
 # and then in its local directory unless overridden by -c.
 
+config:
+  log_file: /var/log/jolly-mx.log 
+      # unless the path is absolute, this will default to the 
+      # folder containing the calling script
+      # if you do NOT wish to log, just omit this value
+      # the file must be writable by the user running the script
+
 servers:
   names: 
     # Define your server adddresses (name or IP) 
@@ -54,12 +61,11 @@ sender_rules:
 
   # The rules are parsed until a match is found, so default must be the first rule.
 
-
   john@example.com:  bad
-  roger@example.com:  bad
+  roger@example.com:  good
   fred@example.com:  bad
   laura@example.com:  bad
-  jane@example.com:  bad
+  jane@example.com:  good
   info@example.com:  good
   example.com: good
   

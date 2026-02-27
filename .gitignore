@@ -3,3 +3,4 @@ start.sh
 __pycache__
 jolly-mx.yaml
 yolly-mx.log
+tests/*.txt 
