@@ -1,0 +1,87 @@
+config:
+  log_file: postfix-mx-router.log # unless the path is absolute, this will default to the 
+      # folder containing the calling script
+      # if you do NOT with to log, just omit this value
+      # the file must be writable by the user running the script
+servers:
+  names: 
+    # Define your server adddresses (name or IP) 
+    # along with the optional perc: param, which defaults to 100.
+    # the `perc` influences how often this server is chosen in the iteration,
+    # with 0 = not chosen at all and 100 = chosen on every iteration.
+    # the attribute name, i.e. `mx1`, is used below for creating groups
+    mx1:  
+      address: relay:[mx1.conaf.it]:25
+      perc: 100 # default
+    mx2:  
+      address: relay:[mx2.conaf.it]:25
+    mx3:  
+      address: relay:[mx3.conaf.it]:25
+      perc: 50
+    mx4:  
+      address: relay:[mx4.conaf.it]:25
+    mx5:  
+      address: relay:[mx5.conaf.it]:25
+      perc: 10
+    mx6:  
+      address: relay:[mx6.conaf.it]:25
+    mx7:  
+      address: relay:[mx7.conaf.it]:25
+  
+  # create convenient groups of servers for the rules above
+  good:     [mx1, mx2, mx3]
+  bad: [mx4, mx5, mx6, mx7]
+
+sender_rules:
+  # the order of the rules is important: start from the longer emails down to the shortest, 
+  # i.e. given the two rules:
+  # - office@example.com : bad
+  # - financial_office@example.com : good
+  # the first match will always be chosen even if the email is the second, because it is a match.
+  # hence domains should always come after emails only.
+
+  # in case no match is found in the rules, the message will use the full list of servers to send.
+
+  # Special `default` rule
+  # If the list of rules contains a `default` rule,
+  # any emails will default to this group instead of the full list of servers.
+
+  default:  NO RESULT
+
+  # so if you just omit *default* it will return a server from the full list of servers
+  # if you want to return `NO RESULT` if no rules match, simply add 
+  # `default: NO RESULT`
+  # and it will be returned with a 500 error code as Postfix expects.
+
+  # The rules are parsed until a match is found, so default must be the first rule.
+
+  daniele.gambetti@conaf.it:  bad
+  federazionesicilia@conaf.it:  bad
+  odaf.piemonte-valledaosta@conaf.it:  bad
+  ordine.comoleccosondrio@conaf.it:  bad
+  ordinealessandria@conaf.it:  bad
+  ordineavellino@conaf.it:  bad
+  ordinecosenza@conaf.it:  bad
+  ordineliguria@conaf.it:  bad
+  ordinemarche@conaf.it:  mx5
+  ordinepiacenza@conaf.it:  bad
+  ordinesiracusa@conaf.it:  bad
+  ordinevercelli@conaf.it:  bad
+  segreteria.ordinebrescia@conaf.it:  bad
+  ufficioprotocollo@conaf.it:  bad
+  ufficiostampa@conaf.it:  bad
+  ordinebenevento@conaf.it:  bad
+  ordinefriuliveneziagiulia@conaf.it:  bad
+  ordinetrapani@conaf.it:  bad
+  ordinemessina@conaf.it:  bad
+  presidente.odaf.marche@conaf.it:  bad
+  conaf.it: good
+
+
+recipient_rules:
+  # TODO NOT implemented yet
+  libero.it:   [mx1, mx7]
+  tiscali.it:    good
+
+  default:       good
+

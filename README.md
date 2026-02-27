@@ -15,7 +15,7 @@ This fork makes substantial changes to the original project by Filidor Wiese:
     - server perc is the percentage out of 100 that this server should be chosen when a 
       mail targets that group and an mx address is returned
     - default allows you to specify a default group; otherwise all servers are used
-    - copy `jolly-mx.yaml.example` to `jolly-mx.yaml`, edit your server groups and pattern rules
+    - copy `config.yaml.example` to `config.yaml`, edit your server groups and pattern rules
 
 - on CTRL-C exit gracefully and show some stats such as : 
 ```
@@ -37,14 +37,14 @@ This fork makes substantial changes to the original project by Filidor Wiese:
 To quickly set it up, after checking out the code, 
 - create a virtual environment in `.venv` and activate it
 - installport requirements
-- copy `jolly-mx.yaml.example` to `jolly-mx.yaml`, edit your server groups and pattern rules
+- copy `config.yaml.example` to `config.yaml`, edit your server groups and pattern rules
 - run the service for testing
 
 ```bash
     $ python -m venv .venv
     $ . .venv/bin/activate
-    $ .venv/bin/pip install -r requirements.txt
-    $ .venv/bin/python ./jolly-mx.py -v
+    $ pip install -r requirements.txt
+    $ python jolly-mx.py -v
 ```
 
 - query the service with
@@ -65,7 +65,7 @@ The service responds with:
 
 ## End of updated part
 Please find the original README below, as it appeared at the time of this fork October 3rd, 2025; most of it is still valid, 
-The only notable difference is the different name: `jolly-mx.py` and **different configuration** filename (`jolly-mx.yaml`), format and options. Also, it operates as a **Postfix Policy Server** rather than a tcp lookup table.
+The only notable difference is the different name: `jolly-mx.py` and **different configuration** filename (`config.yaml`), format and options. Also, it operates as a **Postfix Policy Server** rather than a tcp lookup table.
 
 
 # Postfix MX Pattern Router Service

@@ -107,7 +107,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # Default values
 DEFAULT_PORT = 10099
 DEFAULT_HOST = '127.0.0.1'
-DEFAULT_PATTERN_FILE = 'jolly-mx.yaml'
+DEFAULT_PATTERN_FILE = 'config.yaml'
 DEFAULT_CACHE_TTL = 3600
 DEFAULT_CLIENT_TIMEOUT = 600
 GC_INTERVAL = 3600
@@ -316,7 +316,7 @@ class Config:
         # domain should be like: 
         #   libero.it or mx.libero.it or mail.libero.it you get the gist
         if not hasattr(config.config, rule_type): return False, False
-        rules_dict = getattr(config.config_dict, rule_type, {})
+        rules_dict = config.config_dict.get(rule_type, {})
         rules = [r for r in rules_dict if not r.startswith('__')]
         
         default = False
