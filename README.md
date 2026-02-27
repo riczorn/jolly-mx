@@ -1,8 +1,8 @@
 # Jolly MX Router Service
 
-A fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) which implements **Weighted Round Robin**
-but is incompatible with the original configuration.
+Implement a Weighted Round Robin for Postfix Policy Server (SMTPD Policy Delegation).
 
+This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) but is incompatible with the original configuration.
 
 This fork makes substantial changes to the original project by Filidor Wiese:
 
@@ -12,10 +12,10 @@ This fork makes substantial changes to the original project by Filidor Wiese:
 - server groups have the same percentage usage as the main list. 
   keep this into consideration when choosing the percentage for the individual servers
 - New configuration in yaml
-    - server perc is the percentage out of 100 that this server should be chosen when a 
-      mail targets that group and an mx address is returned
-    - default allows you to specify a default group; otherwise all servers are used
-    - copy `config.yaml.example` to `config.yaml`, edit your server groups and pattern rules
+    - **server perc** is the percentage out of 100 that this server should be chosen
+    - **default** allows you to specify a default group; otherwise all servers are used
+    - 💡 The script will look for `jolly-mx.yaml` in `/etc/postfix/` first, and then in its local directory unless overridden by `-c`.
+    - copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
 
 - on CTRL-C exit gracefully and show some stats such as : 
 ```
@@ -37,7 +37,7 @@ This fork makes substantial changes to the original project by Filidor Wiese:
 To quickly set it up, after checking out the code, 
 - create a virtual environment in `.venv` and activate it
 - installport requirements
-- copy `config.yaml.example` to `config.yaml`, edit your server groups and pattern rules
+- copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
 - run the service for testing
 
 ```bash
@@ -63,9 +63,10 @@ The service responds with:
 - `action=FILTER smtp:[mx_address]` if a match is found
 - `action=DUNNO` if **no** match is found (Postfix continues as normal)
 
-## End of updated part
+## End of jolly-mx specific part
+
 Please find the original README below, as it appeared at the time of this fork October 3rd, 2025; most of it is still valid, 
-The only notable difference is the different name: `jolly-mx.py` and **different configuration** filename (`config.yaml`), format and options. Also, it operates as a **Postfix Policy Server** rather than a tcp lookup table.
+The only notable difference is the different name: `jolly-mx.py` and **different configuration** filename (`jolly-mx.yaml`), format and options. Also, it operates as a **Postfix Policy Server** rather than a tcp lookup table.
 
 
 # Postfix MX Pattern Router Service
@@ -132,54 +133,18 @@ icloud.com                relay:[icloud-relay.example.com]:587
 
 ## Running as a Service
 
-### Create a Dedicated System User
+An automated configuration script `install_service.sh` is provided. It handles:
+- Creating a dedicated `jolly-mx` system user/group with no login access
+- Setting up the Python virtual environment and dependencies locally
+- Copying the configuration to `/etc/postfix/jolly-mx.yaml`
+- Generating and starting the systemd unit `jolly-mx.service` dynamically based on your current path
 
-For security reasons, it's recommended to run the service under a dedicated system user with minimal privileges:
-
+To install:
 ```bash
-# Create a system user and group without login capabilities
-$ groupadd --system jolly-mx
-$ useradd --system --no-create-home --shell /usr/sbin/nologin -g jolly-mx jolly-mx
+$ sudo ./install_service.sh
 ```
 
-### Systemd Service
-
-Create a systemd unit file to run the service as a daemon:
-
-```bash
-$ nano /etc/systemd/system/jolly-mx.service
-```
-
-Add the following content:
-
-```ini
-[Unit]
-Description=Postfix MX Pattern Router Service
-After=network.target
-
-[Service]
-ExecStart=/usr/local/bin/jolly-mx/jolly-mx.py -c /etc/postfix/jolly-mx.yaml -p 10099 --cache-ttl 3600
-Restart=on-failure
-User=jolly-mx
-Group=jolly-mx
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=jolly-mx
-SyslogFacility=mail
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start the service:
-
-```bash
-$ systemctl enable jolly-mx
-$ systemctl start jolly-mx
-```
-
-Check the status:
-
+Check the status at any time:
 ```bash
 $ systemctl status jolly-mx
 ```
@@ -224,4 +189,4 @@ $ journalctl -u jolly-mx -f
 ## License
 This project is licensed under the BSD 3-Clause License - see the LICENSE file for details.
 
-https://github.com/filidorwiese/jolly-mx
+https://github.com/riczorn/jolly-mx

@@ -1,3 +1,7 @@
+# Copy this file to /etc/postfix/jolly-mx.yaml.
+# The service will look for this file in /etc/postfix/jolly-mx.yaml first, 
+# and then in its local directory unless overridden by -c.
+
 servers:
   names: 
     # Define your server adddresses (name or IP) 

@@ -107,7 +107,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # Default values
 DEFAULT_PORT = 10099
 DEFAULT_HOST = '127.0.0.1'
-DEFAULT_PATTERN_FILE = 'config.yaml'
+DEFAULT_PATTERN_FILE = 'jolly-mx.yaml'
 DEFAULT_CACHE_TTL = 3600
 DEFAULT_CLIENT_TIMEOUT = 600
 GC_INTERVAL = 3600
@@ -660,8 +660,15 @@ def main():
     global args
     args = parse_arguments()
 
+    config_path = args.config
+    if config_path == DEFAULT_PATTERN_FILE:
+        # User didn't specify a custom path, let's check /etc/postfix/ first
+        etc_path = f"/etc/postfix/{DEFAULT_PATTERN_FILE}"
+        if os.path.exists(etc_path):
+            config_path = etc_path
+            
     # Load patterns from the specified configuration file
-    config.load(args.config)
+    config.load(config_path)
     config.test() # perform a few lookups to test the round robin
 
     found = False
