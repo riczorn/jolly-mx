@@ -34,3 +34,9 @@ for line in lines:
     mx, group = jmx.get_mx_for_message(sender, recipient, 3600)
         
     print(f"{sender}\t{recipient}\t{group}\t{mx}")
+
+
+print("-------------")
+print(jmx.test_config())
+print("-------------")
+print(jmx.config.print_usage())
