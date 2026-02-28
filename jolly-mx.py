@@ -289,7 +289,7 @@ class Config:
             if hasattr(self.config, 'config') and hasattr(self.config.config, 'log_file'):
                 log_file = self.config.config.log_file
                 
-            self.logger = self.setup_custom_logger('postfix-mx-smart-router', log_file)
+            self.logger = self.setup_custom_logger('jolly-mx', log_file)
             self.servers_obj = Servers(self.config.servers.names)
             self.servers = self.servers_obj.servers
             
@@ -524,6 +524,24 @@ def process_policy_request(request_data, conn, config, cache_ttl):
     sender = request_data.get('sender', '').lower()
     recipient = request_data.get('recipient', '').lower()
 
+    mx, group = get_mx_for_message(sender, recipient, cache_ttl)
+    
+    # Log the decision to the specific log file
+    config.print_log(sender, recipient, group)
+
+    # Check config.enabled
+    is_enabled = True
+    if hasattr(config.config, 'config') and hasattr(config.config.config, 'enabled'):
+        is_enabled = config.config.config.enabled
+
+    if not is_enabled:
+        action = "DUNNO"
+
+    log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action} (Enabled: {is_enabled}, MX Group: {group})", False, True)
+    send_response(conn, action)
+
+
+def get_mx_for_message(sender, recipient, cache_ttl):
     action = "DUNNO"
     group_matched = "n/a"
     
@@ -541,20 +559,7 @@ def process_policy_request(request_data, conn, config, cache_ttl):
             action = f"FILTER {mx}"
             group_matched = group
 
-    # Log the decision to the specific log file
-    config.print_log(sender, recipient, group_matched)
-
-    # Check config.enabled
-    is_enabled = True
-    if hasattr(config.config, 'config') and hasattr(config.config.config, 'enabled'):
-        is_enabled = config.config.config.enabled
-
-    if not is_enabled:
-        action = "DUNNO"
-
-    log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action} (Enabled: {is_enabled}, MX Group: {group_matched})", False, True)
-    send_response(conn, action)
-
+    return mx, group_matched
 
 def send_response(conn, action):
     """Send a formatted policy response to Postfix."""

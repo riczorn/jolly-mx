@@ -24,32 +24,13 @@ print(f"Sender\tRecipient\tMX Group\tMX Host")
 
 for line in lines:
     if not line.strip(): continue
-    parts = re.split(r'[\s:]+', line.strip())
+    parts = re.split(r'[\s]+', line.strip())
     if len(parts) >= 2:
         sender = parts[0]
         recipient = parts[1]
     else:
         continue
+
+    mx, group = jmx.get_mx_for_message(sender, recipient, 3600)
         
-    action = "DUNNO"
-    group_matched = "n/a"
-    mx_host = "n/a"
-    
-    mx, group = jmx.get_next_server_for_email(recipient, 3600, rule_type="recipient_rules")
-    if mx and mx != "NO RESULT":
-        group_matched = group
-        mx_host = mx
-        action = "FILTER"
-        
-    if action == "DUNNO" and sender:
-        mx, group = jmx.get_next_server_for_email(sender, 3600, rule_type="sender_rules")
-        if mx and mx != "NO RESULT":
-            group_matched = group
-            mx_host = mx
-            action = "FILTER"
-            
-    if action == "DUNNO":
-        mx_host = "DUNNO (Postfix Default)"
-        group_matched = "DUNNO"
-        
-    print(f"{sender}\t{recipient}\t{group_matched}\t{mx_host}")
+    print(f"{sender}\t{recipient}\t{group}\t{mx}")
