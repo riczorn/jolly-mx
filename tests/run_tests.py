@@ -3,21 +3,24 @@ import importlib.util
 import re
 import os
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+CONFIG_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.yaml')
+APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
+ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'addresses.txt')
 
-spec = importlib.util.spec_from_file_location("jolly_mx", "../jolly-mx.py")
+spec = importlib.util.spec_from_file_location("jolly_mx", APP_PATH)
 jmx = importlib.util.module_from_spec(spec)
 sys.modules["jolly_mx"] = jmx
 spec.loader.exec_module(jmx)
 
 # Mock args to prevent errors during loading
-jmx.args = type('Args', (), {'config': '../jolly-mx.yaml', 'debug': False})()
-jmx.config.load('../jolly-mx.yaml')
+jmx.args = type('Args', (), {'config': CONFIG_PATH, 'debug': False, 'verbose': False, 'quiet': True})()
+jmx.config.load(CONFIG_PATH)
 
-lines = open('addresses.txt', 'r').read().strip().split('\n')[1:] # skip header
+lines = open(ADDRESSES_PATH, 'r').read().strip().split('\n')[1:] # skip header
 
-print("| Sender | Recipient | MX Group | MX Host |")
-print("|---|---|---|---|")
+print(f"Sender\tRecipient\tMX Group\tMX Host")
 
 for line in lines:
     if not line.strip(): continue
@@ -49,4 +52,4 @@ for line in lines:
         mx_host = "DUNNO (Postfix Default)"
         group_matched = "DUNNO"
         
-    print(f"| {sender} | {recipient} | {group_matched} | {mx_host} |")
+    print(f"{sender}\t{recipient}\t{group_matched}\t{mx_host}")
