@@ -131,7 +131,10 @@ def custom_sigint_handler(sig, frame):
     """
     handle CTRL-C exit and other errors, and exits gracefully.
     """
+    print("Goodbye")
     global config
+    if args and hasattr(args, 'verbose'):
+        args.verbose = True
     config.print_usage()
     print_stats()
     sys.exit(0) # Exit cleanly
@@ -267,7 +270,6 @@ def process_policy_request(request_data, conn, config, cache_ttl):
 
     mx, group = get_mx_for_message(sender, recipient, cache_ttl)
     
-    # Determine the default action before checking if enabled
     if mx == "NO RESULT":
         action = "500 NO RESULT"
     elif mx == "DUNNO":
@@ -277,17 +279,14 @@ def process_policy_request(request_data, conn, config, cache_ttl):
     else:
         action = "DUNNO"
         
-    # Log the decision to the specific log file
     mx_host = mx if mx else "n/a"
-    config.print_csv(sender, recipient, group, mx_host)
-
-    # Check config.enabled
-    is_enabled = config.config.config.enabled
-
-    if not is_enabled:
+    
+    if not config.config.config.enabled:
         action = "DUNNO"
 
-    # log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action} (Enabled: {is_enabled}, MX Group: {group})", False, True)
+    config.print_csv(sender, recipient, group, mx_host)
+    log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action} (Enabled: {config.config.config.enabled}, MX Group: {group})", False, True)
+    
     send_response(conn, action)
 
 

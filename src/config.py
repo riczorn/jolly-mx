@@ -233,7 +233,7 @@ class Config:
             server_obj.print()
 
     def print_csv(self, sender, recipient, mx_group, mx_host):
-        self.logger.info( f"{sender};{recipient};{mx_group};{mx_host}" )
+        # self.logger.info( f"{sender};{recipient};{mx_group};{mx_host}" )
         
         if hasattr(self, 'csv_file') and self.csv_file:
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
