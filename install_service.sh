@@ -1,6 +1,7 @@
 #!/bin/bash
 
 LOGFILE="/var/log/jolly-mx.log"
+CSVFILE="/var/log/jolly-mx-messages.csv"
 
 # Ensure running as root
 if [ "$EUID" -ne 0 ]; then
@@ -40,7 +41,11 @@ chown -R jolly-mx:jolly-mx "$DIR"
 
 echo "[*] Creating the log file..."
 touch "$LOGFILE"
-chown -R jolly-mx:jolly-mx "$LOGFILE"
+chown jolly-mx:jolly-mx "$LOGFILE"
+chmod 666 "$LOGFILE"
+touch "$CSVFILE"
+chown jolly-mx:jolly-mx "$CSVFILE"
+chmod 666 "$CSVFILE"
 
 echo "[*] Setting up virtual environment..."
 # Run as jolly-mx so it owns the venv files
@@ -66,7 +71,7 @@ Description=Jolly MX Policy Server
 After=network.target
 
 [Service]
-ExecStart=$DIR/.venv/bin/python $DIR/jolly-mx.py -p 10099 --cache-ttl 3600
+ExecStart=$DIR/.venv/bin/python $DIR/jolly-mx.py
 WorkingDirectory=$DIR
 Restart=on-failure
 User=jolly-mx
@@ -94,6 +99,9 @@ systemctl is-active jolly-mx
 echo "=============================================="
 echo "Installation complete!"
 echo "Check logs with: journalctl -u jolly-mx -f"
+echo "----------------------------------------------"
 echo "Integration with Postfix:"
-echo "Add 'check_policy_service inet:127.0.0.1:10099' to smtpd_recipient_restrictions in /etc/postfix/main.cf"
+echo "in /etc/postfix/main.cf add:"
+echo "smtpd_recipient_restrictions ="
+echo "  check_policy_service inet:127.0.0.1:10099"
 echo "=============================================="

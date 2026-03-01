@@ -1,14 +1,20 @@
 # Copy this file to /etc/postfix/jolly-mx.yaml.
 # The service will look for this file in /etc/postfix/jolly-mx.yaml first, 
-# and then in its local directory unless overridden by -c.
+# and then in its local directory, unless overridden by -c.
 
 config:
+  enabled: false
+    # if not enabled, it will always respond "DUNNO", but it will log 
+    # its choices. Useful for debugging before going live.
+    
   log_file: /var/log/jolly-mx.log 
       # unless the path is absolute, this will default to the 
       # folder containing the calling script
       # if you do NOT wish to log, just omit this value
       # the file must be writable by the user running the script
 
+  bind_host: 127.0.0.1
+  bind_port: 9732
 servers:
   names: 
     # Define your server adddresses (name or IP) 

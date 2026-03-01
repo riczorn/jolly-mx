@@ -9,6 +9,9 @@ CONFIG_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.yaml')
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'addresses.txt')
 
+# Add project root to path so we can import src.config
+sys.path.insert(0, PROJECT_DIR)
+
 spec = importlib.util.spec_from_file_location("jolly_mx", APP_PATH)
 jmx = importlib.util.module_from_spec(spec)
 sys.modules["jolly_mx"] = jmx
@@ -36,7 +39,4 @@ for line in lines:
     print(f"{sender}\t{recipient}\t{group}\t{mx}")
 
 
-print("-------------")
-print(jmx.test_config())
-print("-------------")
-print(jmx.config.print_usage())
+
