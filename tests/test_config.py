@@ -20,17 +20,14 @@ spec.loader.exec_module(jolly_mx)
 
 jmx = jolly_mx
 
-class MockArgs:
-    verbose = True
-    quiet = False
-
-jmx.args = MockArgs()
-
-jmx.config.load(CONFIG_PATH)
+jmx.config.config_file = CONFIG_PATH
+jmx.config.verbose = True
+jmx.config.quiet = False
+jmx.config.load()
 
 print("-------------")
-jmx.config.test() # perform a few lookups to test the round robin
+# jmx.config.test() # perform a few lookups to test the round robin
 print("-------------")
-jmx.print_stats()
+print(jmx.print_stats())
 print("-------------")
-jmx.config.print_usage()
+print(jmx.config.print_usage())

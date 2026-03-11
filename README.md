@@ -4,7 +4,7 @@ This service acts as a Postfix Policy Server to dynamically route emails based o
 
 It implements a Weighted Round Robin for Postfix Policy Server [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html)
 
-This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by Filidor Wiese and uses its mx lookup logic.
+This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by Filidor Wiese, but is **not compatible**, neither in configuration, nor in purpose.
 
 ## Main features
 

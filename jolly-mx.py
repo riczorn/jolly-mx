@@ -101,25 +101,18 @@ import threading
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # Default values
-DEFAULT_PORT = 9732
-DEFAULT_HOST = '127.0.0.1'
-DEFAULT_PATTERN_FILE = 'jolly-mx.yaml'
-DEFAULT_CACHE_TTL = 3600
-DEFAULT_CLIENT_TIMEOUT = 600
 GC_INTERVAL = 3600
 STATS_INTERVAL = 300
 
 # In-memory cache for MX records
 mx_cache = {}
 
-# Global args variable
-args = None
-
 # Global counter for active connections
 active_connections = 0
 
 
 import src.config as cfg
+from src.config import log
 
 config = cfg.Config()
 
@@ -127,21 +120,19 @@ def custom_sigint_handler(_sig, _frame):
     """
     handle CTRL-C exit and other errors, and exits gracefully.
     """
-    if args and hasattr(args, 'verbose'):
-        args.verbose = True
-    config.print_usage()
-    print_stats()
+    config.verbose = True
+    log(config.print_usage(), False, True)
+    log(print_stats(), False, True)
     sys.exit(0)  # Exit cleanly
 
 def custom_sigterm_handler(_sig, _frame):
     """
     handle SIGTERM exit and other errors, and exits gracefully.
     """
-    if args and hasattr(args, 'verbose'):
-        args.verbose = True
-    config.print_usage()
-    print_stats()
-    # sys.exit(0)  # Exit cleanly
+    config.verbose = True
+    log(config.print_usage(), False, True)
+    log(print_stats(), False, True)
+    sys.exit(0)  # Exit cleanly
 
 # Register the handler for the SIGINT and SIGTERM signals
 signal.signal(signal.SIGINT, custom_sigint_handler)
@@ -149,37 +140,6 @@ signal.signal(signal.SIGTERM, custom_sigterm_handler)
 
 
 
-
-def parse_arguments():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(description='Postfix MX Pattern Router Service + Round-Robin')
-    parser.add_argument('-c', '--config',
-                        default=DEFAULT_PATTERN_FILE,
-                        help=f'Path to configuration file (default: {DEFAULT_PATTERN_FILE})')
-    parser.add_argument('-p', '--port',
-                        type=int,
-                        default=DEFAULT_PORT,
-                        help=f'Port to listen on (default: {DEFAULT_PORT})')
-    parser.add_argument('-H', '--host',
-                        default=DEFAULT_HOST,
-                        help=f'Host to bind to (default: {DEFAULT_HOST})')
-    parser.add_argument('--cache-ttl',
-                        type=int,
-                        default=DEFAULT_CACHE_TTL,
-                        help=f'Cache TTL in seconds (default: {DEFAULT_CACHE_TTL}, where 0 disables cache)')
-    parser.add_argument('--timeout',
-                        type=int,
-                        default=DEFAULT_CLIENT_TIMEOUT,
-                        help=f'Client inactivity timeout in seconds (default: {DEFAULT_CLIENT_TIMEOUT}, where 0 disables timeout)')
-    parser.add_argument('-v', '--verbose',
-                        action='store_true',
-                        default=False,
-                        help=f'Increase verbosity level (default: false)')
-    parser.add_argument('-q', '--quiet',
-                        action='store_true',
-                        default=False,
-                        help=f'Quiet mode, disables logging (default: false)')
-    return parser.parse_args()
 
 
 def get_mx_records(domain, cache_ttl):
@@ -243,7 +203,7 @@ def print_stats():
     process = psutil.Process(os.getpid())
     memory_usage = process.memory_info().rss / 1024 / 1024  # Convert to MB
     cache_size = len(mx_cache)
-    log(f"Memory usage: {memory_usage:.2f} MB, Cache items: {cache_size}, Active connections: {active_connections}", False, True)
+    return f"Memory usage: {memory_usage:.2f} MB, Cache items: {cache_size}, Active connections: {active_connections}"
 
 
 def jobs_thread():
@@ -254,11 +214,11 @@ def jobs_thread():
         current_time = time.time()
 
         # Report stats
-        print_stats()
+        log(print_stats(), False, True)
 
         # Run garbage collection if cache is enabled and it's time
-        if args.cache_ttl > 0 and current_time - last_gc_time >= GC_INTERVAL:
-            cleanup_cache(args.cache_ttl)
+        if config.cache_ttl > 0 and current_time - last_gc_time >= GC_INTERVAL:
+            cleanup_cache(config.cache_ttl)
             last_gc_time = current_time
 
         # Sleep until next interval
@@ -283,11 +243,11 @@ def process_policy_request(request_data, conn, config, cache_ttl):
         
     mx_host = mx if mx else "n/a"
     
-    if not config.config.config.enabled:
+    if not config.enabled:
         action = "DUNNO"
 
     config.print_csv(sender, recipient, group, mx_host)
-    log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action} (Enabled: {config.config.config.enabled}, MX Group: {group})", False, True)
+    log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action} (Enabled: {config.enabled}, MX Group: {group})", False, True)
     
     send_response(conn, action)
 
@@ -318,18 +278,6 @@ def send_response(conn, action):
     conn.sendall(response.encode('utf-8'))
 
 
-def log(message, to_stderr=False, needs_verbose=False):
-    """Logs and flushes to stdout/stderr."""
-    is_verbose = args.verbose if args and hasattr(args, 'verbose') else False
-    is_quiet = args.quiet if args and hasattr(args, 'quiet') else False
-
-    if (to_stderr):
-        sys.stderr.write(f"{message}\n")
-    elif (needs_verbose and is_verbose) or not needs_verbose and not is_quiet:
-        sys.stdout.write(f"{message}\n")
-
-    sys.stdout.flush()
-
 
 
 def handle_client(conn, addr, config):
@@ -339,8 +287,8 @@ def handle_client(conn, addr, config):
 
     try:
         # Set a timeout for client connections if enabled
-        if args.timeout > 0:
-            conn.settimeout(args.timeout)
+        if config.timeout > 0:
+            conn.settimeout(config.timeout)
 
         buffer = ""
         while True:
@@ -367,7 +315,7 @@ def handle_client(conn, addr, config):
                         request_data[key.strip()] = val.strip()
 
                 try:
-                    process_policy_request(request_data, conn, config, args.cache_ttl)
+                    process_policy_request(request_data, conn, config, config.cache_ttl)
                 except Exception as e:
                     log(f"Error processing request: {e}", True)
                     send_response(conn, "DUNNO")
@@ -422,29 +370,13 @@ def get_next_server_for_email(email, cache_ttl, rule_type):
     
 
 def main():
-    # Parse command line arguments
-    global args
-    args = parse_arguments()
-    cfg.args = args
+    cfg.config = config
 
-    config_path = args.config
-    if config_path == DEFAULT_PATTERN_FILE:
-        # User didn't specify a custom path, let's check /etc/postfix/ first
-        etc_path = f"/etc/postfix/{DEFAULT_PATTERN_FILE}"
-        if os.path.exists(etc_path):
-            config_path = etc_path
-            
     # Load patterns from the specified configuration file
-    config.load(config_path)
+    config.load()
 
-    # Determine bind host and port from config if CLI is still matching defaults
-    bind_host = args.host
-    if args.host == DEFAULT_HOST and config.config.config.bind_host:
-        bind_host = config.config.config.bind_host
-        
-    bind_port = args.port
-    if args.port == DEFAULT_PORT and config.config.config.bind_port:
-        bind_port = int(config.config.config.bind_port)
+    bind_host = config.host
+    bind_port = config.port
 
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -452,8 +384,8 @@ def main():
     try:
         server.bind((bind_host, bind_port))
         server.listen(5)
-        if args.cache_ttl > 0:
-            log(f"JollyMX server listening on {bind_host}:{bind_port} (cache {args.cache_ttl} seconds)")
+        if config.cache_ttl > 0:
+            log(f"JollyMX server listening on {bind_host}:{bind_port} (cache {config.cache_ttl} seconds)")
         else:
             log(f"JollyMX server listening on {bind_host}:{bind_port} (no cache)")
 

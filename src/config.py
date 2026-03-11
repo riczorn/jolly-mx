@@ -3,12 +3,12 @@ import logging
 import sys
 import datetime
 
-args = None
+config = None
 
 def log(message, to_stderr=False, needs_verbose=False):
     """Logs and flushes to stdout/stderr."""
-    is_verbose = args.verbose if args and hasattr(args, 'verbose') else False
-    is_quiet = args.quiet if args and hasattr(args, 'quiet') else False
+    is_verbose = config.verbose if config else False
+    is_quiet = config.quiet if config else False
 
     if to_stderr:
         sys.stderr.write(f"{message}\n")
@@ -49,13 +49,17 @@ class Servers:
             for server in self.servers:
                 server.perc_target = server.percent / percent_sum
 
-    def print(self):
+    def print(self, logger=None):
         """ print the servers usage """
         self.calc_perc()
         usage = f"  Name          # Sent |  curr. % / target %"
         for i in self.servers:
             usage = f"{usage}\n    {i.name:10s} {i.mails_sent:7,d} | {i.perc_current*100:8.4f} / {i.perc_target*100:8.4f}"
-        log(usage, False, True)
+        
+        if logger:
+            logger.info("\n" + usage) 
+            
+        return usage
         
     def calc_perc(self):
         """ 
@@ -102,9 +106,19 @@ class Servers:
 class Config:
     def __init__(self):
         self.config_dict = {}
-        self.config = None
+        self.config_obj = None
         self.servers = []
         self.logger = False
+        self.enabled = False
+        
+        self.verbose = False
+        self.quiet = False
+        self.cache_ttl = 3600
+        self.timeout = 600
+        self.port = 9732
+        self.host = '127.0.0.1'
+        self.config_file = 'jolly-mx.yaml'
+        self.parse_args()
 
     def setup_custom_logger(self, name, filename):
         logger = logging.getLogger(name)
@@ -138,49 +152,110 @@ class Config:
                 setattr(top, i, j)
         return top
 
-    def load(self, file_path):
-        with open(file_path) as config_file:
+    def parse_args(self):
+        import argparse
+        parser = argparse.ArgumentParser(description='Postfix MX Pattern Router Service + Round-Robin')
+        parser.add_argument('-c', '--config',
+                            default=self.config_file,
+                            help=f'Path to configuration file (default: {self.config_file})')
+        parser.add_argument('-p', '--port',
+                            type=int,
+                            default=self.port,
+                            help=f'Port to listen on (default: {self.port})')
+        parser.add_argument('-H', '--host',
+                            default=self.host,
+                            help=f'Host to bind to (default: {self.host})')
+        parser.add_argument('--cache-ttl',
+                            type=int,
+                            default=self.cache_ttl,
+                            help=f'Cache TTL in seconds (default: {self.cache_ttl}, where 0 disables cache)')
+        parser.add_argument('--timeout',
+                            type=int,
+                            default=self.timeout,
+                            help=f'Client inactivity timeout in seconds (default: {self.timeout}, where 0 disables timeout)')
+        parser.add_argument('-v', '--verbose',
+                            action='store_true',
+                            default=self.verbose,
+                            help=f'Increase verbosity level (default: false)')
+        parser.add_argument('-q', '--quiet',
+                            action='store_true',
+                            default=self.quiet,
+                            help=f'Quiet mode, disables logging (default: false)')
+        parsed_args = parser.parse_args()
+
+        self.verbose = parsed_args.verbose
+        self.quiet = parsed_args.quiet
+        self.cache_ttl = parsed_args.cache_ttl
+        self.timeout = parsed_args.timeout
+        self.port = parsed_args.port
+        self.host = parsed_args.host
+        self.config_file = parsed_args.config
+
+    def load(self):
+        import os
+        config_path = self.config_file
+        if config_path == 'jolly-mx.yaml':
+            etc_path = f"/etc/postfix/jolly-mx.yaml"
+            if os.path.exists(etc_path):
+                config_path = etc_path
+        self.config_file = config_path
+
+        if not os.path.exists(self.config_file):
+            log(f"ERROR: Config file {self.config_file} not found", True)
+            sys.exit(1)
+
+        with open(self.config_file) as config_file:
             self.config_dict = yaml.safe_load(config_file)
             
             if 'config' not in self.config_dict or not self.config_dict['config']:
                 self.config_dict['config'] = {}
                 
             cfg = self.config_dict['config']
-            cfg.setdefault('enabled', False)
-            cfg.setdefault('log_file', '/var/log/jolly-mx.log')
-            cfg.setdefault('csv_file', '/var/log/jolly-mx-messages.csv')
-            cfg.setdefault('bind_host', '127.0.0.1')
-            cfg.setdefault('bind_port', 9732)
+            self.enabled = cfg.get('enabled', False)
+            self.log_file = cfg.get('log_file', '/var/log/jolly-mx.log')
+            self.csv_file = cfg.get('csv_file', '/var/log/jolly-mx-messages.csv')
             
-            self.config = self.obj_dic(self.config_dict)
+            if cfg.get('debug', False):
+                self.verbose = True
+            
+            bind_host = cfg.get('bind_host', '127.0.0.1')
+            bind_port = int(cfg.get('bind_port', 9732))
+            
+            if self.host == '127.0.0.1' and bind_host:
+                self.host = bind_host
+            if self.port == 9732 and bind_port:
+                self.port = bind_port
+            
+            self.config_obj = self.obj_dic(self.config_dict)
             
             log("# MX Servers", False, True)
+                
+            self.logger = self.setup_custom_logger('jolly-mx', self.log_file)
             
-            log_file = self.config.config.log_file
-            self.csv_file = self.config.config.csv_file
-                
-            self.logger = self.setup_custom_logger('jolly-mx', log_file)
-            self.servers_obj = Servers(self.config.servers.names)
-            self.servers = self.servers_obj.servers
+            self.server_groups = self.obj_dic({})
             
-            # Create the server groups defined after servers.names in the configuration
-            server_groups_names = [sg for sg in vars(self.config.servers) if not sg.startswith('__') and not sg=='names']
-            server_groups = {} # object()
-            for server_group_name in server_groups_names:
-                server_group_list = getattr(self.config.servers, server_group_name)
-                server_group_array = {}
-                for server_name in server_group_list:
-                    server_group_array[server_name] = getattr(self.config.servers.names, server_name)
+            if hasattr(self.config_obj, 'servers') and hasattr(self.config_obj.servers, 'names'):
+                self.servers_obj = Servers(self.config_obj.servers.names)
+                self.servers = self.servers_obj.servers
                 
-                server_group_dict = self.obj_dic(server_group_array)
-                log( f"# MX group           {server_group_name}", False, True )
-                server_groups[server_group_name] = Servers(server_group_dict)
-                
-            self.server_groups = self.obj_dic (server_groups)
+                # Create the server groups defined after servers.names in the configuration
+                server_groups_names = [sg for sg in vars(self.config_obj.servers) if not sg.startswith('__') and not sg=='names']
+                server_groups = {} # object()
+                for server_group_name in server_groups_names:
+                    server_group_list = getattr(self.config_obj.servers, server_group_name)
+                    server_group_array = {}
+                    for server_name in server_group_list:
+                        server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
+                    
+                    server_group_dict = self.obj_dic(server_group_array)
+                    log( f"# MX group           {server_group_name}", False, True )
+                    server_groups[server_group_name] = Servers(server_group_dict)
+                    
+                self.server_groups = self.obj_dic(server_groups)
             log( f"Config.loaded\n", False, True )
 
     def test_domain_rules(self, email, domain, rule_type="sender_rules"):
-        if not hasattr(self.config, rule_type): return False, False
+        if not hasattr(self.config_obj, rule_type): return False, False
         rules_dict = self.config_dict.get(rule_type, {})
         rules = [r for r in rules_dict if not r.startswith('__')]
         
@@ -190,19 +265,14 @@ class Config:
             value = rules_dict[rule]
             if rule == "default":
                 default = value
-            if email == rule:
+                continue
+                
+            if email == rule or rule in domain or rule in email:
                 result = value
-                log( f"  Matched email {email} against {rule} in {rule_type}: {value}", False, True )
+                match_type = f"email {email}" if email == rule else f"MX domain {domain}" if rule in domain else f"mail domain {domain}"
+                log( f"  Matched {match_type} against {rule} in {rule_type}: {value}", False, True )
                 break
-            if rule in domain: # domain is the name of the mx record i.e mx.example.com
-                result = value
-                log( f"  Matched MX domain {domain} against {rule} in {rule_type}: {value}", False, True )
-                break
-            if rule in email: # this will match the rule "example.com" against john@example.com
-                result = value
-                log( f"  Matched mail domain {domain} against {rule} in {rule_type}: {value}", False, True )
-                break
-            
+
         if not result:
             result = default
 
@@ -219,13 +289,19 @@ class Config:
         return servers_obj
 
     def print_usage(self):
-        log( "\nAll Servers", False, True )
-        self.servers_obj.print()
+        output = "\nAll Servers\n"
+        if self.logger: self.logger.info("All Servers")
+        output += self.servers_obj.print(self.logger)
+        
         server_groups = [sg for sg in vars(self.server_groups) if not sg.startswith('__')]
         for server_name in server_groups:
             server_obj = self.get_server_group(server_name)
-            log(f"\nGroup {server_name}", False, True)
-            server_obj.print()
+            
+            output += f"\n\nGroup {server_name}\n"
+            if self.logger: self.logger.info(f"Group {server_name}")
+            output += server_obj.print(self.logger)
+            
+        return output
 
     def print_csv(self, sender, recipient, mx_group, mx_host):
         # self.logger.info( f"{sender};{recipient};{mx_group};{mx_host}" )

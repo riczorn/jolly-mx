@@ -17,9 +17,11 @@ jmx = importlib.util.module_from_spec(spec)
 sys.modules["jolly_mx"] = jmx
 spec.loader.exec_module(jmx)
 
-# Mock args to prevent errors during loading
-jmx.args = type('Args', (), {'config': CONFIG_PATH, 'debug': False, 'verbose': False, 'quiet': True})()
-jmx.config.load(CONFIG_PATH)
+# Set properties directly on config instead of using mock args
+jmx.config.config_file = CONFIG_PATH
+jmx.config.verbose = False
+jmx.config.quiet = True
+jmx.config.load()
 
 lines = open(ADDRESSES_PATH, 'r').read().strip().split('\n')[1:] # skip header
 

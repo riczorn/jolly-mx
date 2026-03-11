@@ -16,14 +16,12 @@ def main():
         if not os.path.exists(config_path):
             print("Error: Could not find jolly-mx.yaml or jolly-mx.yaml.example")
             sys.exit(1)
-            
-    config.load(config_path)
-    
-    # Need mock args to satisfy log function requirements in config.py
-    class MockArgs:
-        verbose = True
-        quiet = False
-    cfg.args = MockArgs()
+    # Bypass CLI args mock requirement
+    config.verbose = True
+    config.quiet = False
+    config.config_file = config_path
+
+    config.load()
     
     print("Running load test for 125,000 requests...")
     for i in range(125000):
