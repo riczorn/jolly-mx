@@ -34,6 +34,19 @@ This fork makes substantial changes to the original project by Filidor Wiese:
 ```
 
 ## Installation
+There is an install script that may help you create the virtual environment, install the requirements and setup the service.
+
+1. Clone this repository:
+
+```bash
+    $ cd /opt
+    $ git clone https://github.com/riczorn/jolly-mx.git
+    $ cd jolly-mx
+    $ ./install_service.sh
+```
+
+
+
 To quickly set it up, after checking out the code, 
 - create a virtual environment in `.venv` and activate it
 - installport requirements
@@ -101,35 +114,6 @@ The service uses substring matching for MX patterns, not exact matching. This me
 
 - Python 3.6 or higher
 
-### Setup
-
-1. Clone this repository:
-
-```bash
-$ git clone https://github.com/filidorwiese/jolly-mx.git /usr/local/bin/jolly-mx
-$ cd /usr/local/bin/jolly-mx
-```
-
-2. Install dependencies:
-
-```bash
-$ pip install -r requirements.txt
-```
-
-Or use package manager from your distribution.
-
-3. Create the configuration file to define your MX patterns:
-
-```bash
-$ nano /etc/postfix/jolly-mx.yaml
-```
-
-Example configuration:
-```
-protection.outlook.com    relay:[office365-relay.example.com]:587
-mx.microsoft              relay:[office365-relay.example.com]:587
-icloud.com                relay:[icloud-relay.example.com]:587
-```
 
 ## Running as a Service
 
