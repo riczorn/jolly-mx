@@ -127,18 +127,25 @@ def custom_sigint_handler(_sig, _frame):
     """
     handle CTRL-C exit and other errors, and exits gracefully.
     """
-    print("Goodbye")
     if args and hasattr(args, 'verbose'):
         args.verbose = True
     config.print_usage()
     print_stats()
     sys.exit(0)  # Exit cleanly
 
-# Register the handler for the SIGINT signal
+def custom_sigterm_handler(_sig, _frame):
+    """
+    handle SIGTERM exit and other errors, and exits gracefully.
+    """
+    if args and hasattr(args, 'verbose'):
+        args.verbose = True
+    config.print_usage()
+    print_stats()
+    # sys.exit(0)  # Exit cleanly
+
+# Register the handler for the SIGINT and SIGTERM signals
 signal.signal(signal.SIGINT, custom_sigint_handler)
-
-
-
+signal.signal(signal.SIGTERM, custom_sigterm_handler) 
 
 
 

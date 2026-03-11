@@ -1,17 +1,19 @@
 # Jolly MX Router Service
 
-Implement a Weighted Round Robin for Postfix Policy Server [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html) permitting to route mails based on sender and recipient addresses, and warm up gradually new mailservers.
+This service acts as a Postfix Policy Server to dynamically route emails based on both the sender and the recipient addresses.
+
+It implements a Weighted Round Robin for Postfix Policy Server [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html)
 
 This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by Filidor Wiese and uses its mx lookup logic.
 
 ## Main features
 
 - support for Weighted Round Robin mx server groups
+- gradually warm up new mailservers (using `perc`)
 - each rule can target a specific group
-- all servers are used if no group is chosen by a rule and no default rule is set
-- server groups have the same percentage usage as the main list.
-  keep this into consideration when choosing the percentage for the individual servers
-- Configuration in yaml
+- all servers are used if no group is chosen by a rule
+- a default rule will override the full list of servers
+- the configuration in yaml
   - **server perc** is the percentage out of 100 that this server should be chosen
   - **default** allows you to specify a default group; otherwise all servers are used
   - 💡 The script will look for `jolly-mx.yaml` in `/etc/postfix/` first, and then in its local directory unless overridden by `-c`.
@@ -139,8 +141,6 @@ The log files locations are set in `/etc/postfix/jolly-mx.yaml`.
 I am attaching the mx matching description from the original README below, as it appeared at the time of this fork October 3rd, 2025.
 
 # Postfix MX Pattern Router Service
-
-This service acts as a Postfix Policy Server to dynamically route emails based on both the sender and the recipient addresses.
 
 ## Operation
 
