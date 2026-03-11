@@ -1,21 +1,20 @@
 # Jolly MX Router Service
 
-Implement a Weighted Round Robin for Postfix Policy Server [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html).
+Implement a Weighted Round Robin for Postfix Policy Server [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html) permitting to route mails based on sender and recipient addresses, and warm up gradually new mailservers.
 
-This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) but is incompatible with the original configuration.
+This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by Filidor Wiese and uses its mx lookup logic.
 
-This fork makes substantial changes to the original project by Filidor Wiese:
+## Main features
 
 - support for Weighted Round Robin mx server groups
 - each rule can target a specific group
 - all servers are used if no group is chosen by a rule and no default rule is set
 - server groups have the same percentage usage as the main list.
   keep this into consideration when choosing the percentage for the individual servers
-- New configuration in yaml
+- Configuration in yaml
   - **server perc** is the percentage out of 100 that this server should be chosen
   - **default** allows you to specify a default group; otherwise all servers are used
   - 💡 The script will look for `jolly-mx.yaml` in `/etc/postfix/` first, and then in its local directory unless overridden by `-c`.
-  - copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
 
 - on CTRL-C exit gracefully and show some stats such as :
 
@@ -92,6 +91,8 @@ The service responds with:
 - `action=FILTER smtp:[mx_address]` if a match is found
 - `action=DUNNO` if **no** match is found (Postfix continues as normal)
 
+You will also find in the configured log files the messages received and their result.
+
 ### 3. Integration with Postfix
 
 Once you confirm that the service is working, you may configure Postfix.
@@ -116,12 +117,26 @@ smtpd_relay_restrictions =
 
 Ensure that `check_policy_service` is before `permit_mynetworks` and `permit_sasl_authenticated`, else it will not be triggered for local traffic i.e. webmail.
 
-Then reload Postfix.
+Then reload Postfix:
+
+```bash
+$ postfix reload
+```
+
+### 4. Configuration
+
+Edit `/etc/postfix/jolly-mx.yaml` to your needs and reload the service with:
+
+```bash
+$ systemctl restart jolly-mx
+```
+
+Begin with `enabled: false`, then inspect the logs and only enable it once it behaves as you expect.
+The log files locations are set in `/etc/postfix/jolly-mx.yaml`.
 
 ## End of jolly-mx specific part
 
-Please find the original README below, as it appeared at the time of this fork October 3rd, 2025; most of it is still valid,
-The only notable difference is the different name: `jolly-mx.py` and **different configuration** filename (`jolly-mx.yaml`), format and options. Also, it operates as a **Postfix Policy Server** rather than a tcp lookup table.
+I am attaching the mx matching description from the original README below, as it appeared at the time of this fork October 3rd, 2025.
 
 # Postfix MX Pattern Router Service
 
