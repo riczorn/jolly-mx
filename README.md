@@ -36,7 +36,7 @@ This fork makes substantial changes to the original project by Filidor Wiese:
 ## Installation
 There is an install script that may help you create the virtual environment, install the requirements and setup the service.
 
-1. Clone this repository:
+Clone this repository and run the install script:
 
 ```bash
     $ cd /opt
@@ -45,9 +45,13 @@ There is an install script that may help you create the virtual environment, ins
     $ ./install_service.sh
 ```
 
+This should take care of the installation. Check the service status with
 
+```bash
+    $ systemctl status jolly-mx
+```
 
-To quickly set it up, after checking out the code, 
+Else, to quickly set it up, after checking out the code, 
 - create a virtual environment in `.venv` and activate it
 - installport requirements
 - copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
@@ -63,7 +67,7 @@ To quickly set it up, after checking out the code,
 - query the service with
 
 ```bash
-    $ cat <<EOF | nc 127.0.0.1 10099
+    $ cat <<EOF | nc 127.0.0.1 9732
 request=smtpd_access_policy
 sender=newsletter@fasterweb.net
 recipient=xyz@gmail.com

@@ -458,7 +458,7 @@ def main():
             conn, addr = server.accept()
             client_thread = threading.Thread(
                 target=handle_client,
-                args=(conn, addr, config, args.cache_ttl),
+                args=(conn, addr, config),
                 daemon=True
             )
             client_thread.start()
