@@ -1,6 +1,6 @@
 # Jolly MX Router Service
 
-Implement a Weighted Round Robin for Postfix Policy Server (SMTPD Policy Delegation).
+Implement a Weighted Round Robin for Postfix Policy Server [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html).
 
 This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) but is incompatible with the original configuration.
 
@@ -9,15 +9,16 @@ This fork makes substantial changes to the original project by Filidor Wiese:
 - support for Weighted Round Robin mx server groups
 - each rule can target a specific group
 - all servers are used if no group is chosen by a rule and no default rule is set
-- server groups have the same percentage usage as the main list. 
+- server groups have the same percentage usage as the main list.
   keep this into consideration when choosing the percentage for the individual servers
 - New configuration in yaml
-    - **server perc** is the percentage out of 100 that this server should be chosen
-    - **default** allows you to specify a default group; otherwise all servers are used
-    - 💡 The script will look for `jolly-mx.yaml` in `/etc/postfix/` first, and then in its local directory unless overridden by `-c`.
-    - copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
+  - **server perc** is the percentage out of 100 that this server should be chosen
+  - **default** allows you to specify a default group; otherwise all servers are used
+  - 💡 The script will look for `jolly-mx.yaml` in `/etc/postfix/` first, and then in its local directory unless overridden by `-c`.
+  - copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
 
-- on CTRL-C exit gracefully and show some stats such as : 
+- on CTRL-C exit gracefully and show some stats such as :
+
 ```
     Group good
     Name          # Sent |  curr. % / target %
@@ -34,6 +35,9 @@ This fork makes substantial changes to the original project by Filidor Wiese:
 ```
 
 ## Installation
+
+### 1. With install script
+
 There is an install script that may help you create the virtual environment, install the requirements and setup the service.
 
 Clone this repository and run the install script:
@@ -45,13 +49,16 @@ Clone this repository and run the install script:
     $ ./install_service.sh
 ```
 
-This should take care of the installation. Check the service status with
+This should take care of installing and creating the service. Check the service status with
 
 ```bash
     $ systemctl status jolly-mx
 ```
 
-Else, to quickly set it up, after checking out the code, 
+### 1. Manual installation
+
+Else, to quickly set it up, after checking out the code,
+
 - create a virtual environment in `.venv` and activate it
 - installport requirements
 - copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
@@ -64,7 +71,10 @@ Else, to quickly set it up, after checking out the code,
     $ python jolly-mx.py -v
 ```
 
-- query the service with
+### 2. Testing
+
+You can find the tests in the `tests` folder.
+Query the service with
 
 ```bash
     $ cat <<EOF | nc 127.0.0.1 9732
@@ -75,16 +85,43 @@ recipient=xyz@gmail.com
 EOF
 ```
 
-## Expected response
+#### Expected response
+
 The service responds with:
+
 - `action=FILTER smtp:[mx_address]` if a match is found
 - `action=DUNNO` if **no** match is found (Postfix continues as normal)
 
+### 3. Integration with Postfix
+
+Once you confirm that the service is working, you may configure Postfix.
+
+Add the following to your Postfix configuration (`/etc/postfix/main.cf`) under `smtpd_recipient_restrictions`:
+
+```
+smtpd_relay_restrictions =
+        check_policy_service inet:127.0.0.1:9732,
+        ...
+```
+
+For example this could be:
+
+```
+smtpd_relay_restrictions =
+        check_policy_service inet:127.0.0.1:10099,
+        permit_mynetworks,
+        permit_sasl_authenticated,
+        reject_unauth_destination
+```
+
+Ensure that `check_policy_service` is before `permit_mynetworks` and `permit_sasl_authenticated`, else it will not be triggered for local traffic i.e. webmail.
+
+Then reload Postfix.
+
 ## End of jolly-mx specific part
 
-Please find the original README below, as it appeared at the time of this fork October 3rd, 2025; most of it is still valid, 
+Please find the original README below, as it appeared at the time of this fork October 3rd, 2025; most of it is still valid,
 The only notable difference is the different name: `jolly-mx.py` and **different configuration** filename (`jolly-mx.yaml`), format and options. Also, it operates as a **Postfix Policy Server** rather than a tcp lookup table.
-
 
 # Postfix MX Pattern Router Service
 
@@ -112,69 +149,8 @@ The service uses substring matching for MX patterns, not exact matching. This me
 
 **Please be aware that patterns are not matched against recipient domain but the MX records of that domain!**
 
-## Installation
-
-### Requirements
-
-- Python 3.6 or higher
-
-
-## Running as a Service
-
-An automated configuration script `install_service.sh` is provided. It handles:
-- Creating a dedicated `jolly-mx` system user/group with no login access
-- Setting up the Python virtual environment and dependencies locally
-- Copying the configuration to `/etc/postfix/jolly-mx.yaml`
-- Generating and starting the systemd unit `jolly-mx.service` dynamically based on your current path
-
-To install:
-```bash
-$ sudo ./install_service.sh
-```
-
-Check the status at any time:
-```bash
-$ systemctl status jolly-mx
-```
-
-## Integration with Postfix
-
-Add the following to your Postfix configuration (`/etc/postfix/main.cf`):
-
-Add the following to your Postfix configuration (`/etc/postfix/main.cf`) under `smtpd_recipient_restrictions`:
-
-```
-smtpd_recipient_restrictions =
-    ...,
-    check_policy_service inet:127.0.0.1:10099
-```
-
-Then reload Postfix.
-
-## Testing the Service
-
-You can test the service directly from the command line using netcat (nc) to simulate Postfix policy delegation requests:
-
-```bash
-$ cat <<EOF | nc 127.0.0.1 10099
-request=smtpd_access_policy
-sender=newsletter@fasterweb.net
-recipient=user@tiscali.it
-
-EOF
-```
-
-The service responds with:
-- `action=FILTER smtp:[...relay...]` if a match is found
-- `action=DUNNO` if no match is found
-
-You can also check the logs for more detailed information:
-
-```bash
-$ journalctl -u jolly-mx -f
-```
-
 ## License
+
 This project is licensed under the BSD 3-Clause License - see the LICENSE file for details.
 
 https://github.com/riczorn/jolly-mx
