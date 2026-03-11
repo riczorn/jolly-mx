@@ -3,15 +3,21 @@
 # and then in its local directory, unless overridden by -c.
 
 config:
+  # if not enabled, it will always respond "DUNNO", but it will log 
+  # its choices. Useful for debugging before going live.
   enabled: false
-    # if not enabled, it will always respond "DUNNO", but it will log 
-    # its choices. Useful for debugging before going live.
     
+  # unless the path is absolute, this will default to the 
+  # folder containing the calling script
+  # if you do NOT wish to log, just omit this value
+  # the file must be writable by the user running the script
   log_file: /var/log/jolly-mx.log 
-      # unless the path is absolute, this will default to the 
-      # folder containing the calling script
-      # if you do NOT wish to log, just omit this value
-      # the file must be writable by the user running the script
+  
+  # save a csv file in the format: date;sender;recipient;mx_group;mx_host
+  csv_file: /var/log/jolly-mx-messages.csv
+
+  # be verbose in the log_file
+  debug: true
 
   bind_host: 127.0.0.1
   bind_port: 9732
@@ -65,7 +71,7 @@ sender_rules:
   # `default: NO RESULT`
   # and it will be returned with a 500 error code as Postfix expects.
 
-  # The rules are parsed until a match is found, so default must be the first rule.
+  # The rules are parsed until a match is found. Default must be the first rule.
 
   john@example.com:  bad
   roger@example.com:  good
