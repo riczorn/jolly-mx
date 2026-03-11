@@ -218,11 +218,6 @@ class Config:
 
         return servers_obj
 
-    def test(self):
-        for i in range(125000):
-            self.servers_obj.get_next()
-        self.servers_obj.print()
-
     def print_usage(self):
         log( "\nAll Servers", False, True )
         self.servers_obj.print()

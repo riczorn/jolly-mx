@@ -91,15 +91,11 @@ import os
 import sys
 import signal
 import socket
-import re
 import time
 import dns.resolver
-import urllib.parse
 import argparse
 import psutil
 import threading
-import yaml
-import logging
 
 # Change to the script's directory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -127,17 +123,16 @@ import src.config as cfg
 
 config = cfg.Config()
 
-def custom_sigint_handler(sig, frame):
+def custom_sigint_handler(_sig, _frame):
     """
     handle CTRL-C exit and other errors, and exits gracefully.
     """
     print("Goodbye")
-    global config
     if args and hasattr(args, 'verbose'):
         args.verbose = True
     config.print_usage()
     print_stats()
-    sys.exit(0) # Exit cleanly
+    sys.exit(0)  # Exit cleanly
 
 # Register the handler for the SIGINT signal
 signal.signal(signal.SIGINT, custom_sigint_handler)
@@ -329,12 +324,8 @@ def log(message, to_stderr=False, needs_verbose=False):
     sys.stdout.flush()
 
 
-def log_dict(dict, needs_verbose=False):
-    for key, value in dict.items():
-        log(f"  {key} → {value}", False, needs_verbose)
 
-
-def handle_client(conn, addr, config, cache_ttl):
+def handle_client(conn, addr, config):
     """Handle a client connection in a separate thread."""
     global active_connections
     active_connections += 1
@@ -392,13 +383,12 @@ def handle_client(conn, addr, config, cache_ttl):
 
 
 def get_next_server_for_email(email, cache_ttl, rule_type):
-    global config
     mx_server_group = False
     default = False
     domain = email.split('@')[1] if '@' in email else ''
 
     if domain:
-        mx_records, from_cache = get_mx_records(domain, cache_ttl)
+        mx_records, _ = get_mx_records(domain, cache_ttl)
         for mx in mx_records:
             mx_server_group, default = config.test_domain_rules(email, mx, rule_type=rule_type)
             if mx_server_group:
@@ -426,7 +416,6 @@ def get_next_server_for_email(email, cache_ttl, rule_type):
 
 def main():
     # Parse command line arguments
-    global config
     global args
     args = parse_arguments()
     cfg.args = args
