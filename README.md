@@ -1,10 +1,10 @@
 # Jolly MX Router Service
 
-This service acts as a Postfix Policy Server to dynamically route emails based on both the sender and the recipient addresses.
+This service acts as a Postfix Policy Server to dynamically route emails based on both the sender and the recipient addresses. See [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html)
 
-It implements a Weighted Round Robin for Postfix Policy Server [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html)
+It implements a Weighted Round Robin to warm up mx servers
 
-This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by Filidor Wiese, but is **not compatible**, neither in configuration, nor in purpose.
+This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by Filidor Wiese, but it is **no longer compatible**, neither in configuration, nor in functionality.
 
 ## Main features
 
