@@ -88,7 +88,7 @@ fi
 echo "[*] Setting up virtual environment..."
 # Run as jolly-mx so it owns the venv files
 sudo -u jolly-mx python3 -m venv "$DIR/.venv"
-sudo -u jolly-mx "$DIR/.venv/bin/pip" install -r "$DIR/requirements.txt"
+sudo -u jolly-mx "$DIR/.venv/bin/pip" install --no-cache-dir -r "$DIR/requirements.txt"
 
 echo "[*] Setting up configuration..."
 if [ ! -d "/etc/postfix" ]; then
