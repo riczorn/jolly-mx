@@ -47,21 +47,21 @@ touch "$CSVFILE"
 chown jolly-mx:jolly-mx "$CSVFILE"
 chmod 666 "$CSVFILE"
 
-echo "[*] Checking for python3..."
-if ! command -v python3 &>/dev/null; then
-    echo "python3 is not installed. Attempting to install..."
+echo "[*] Checking for python3 and compile dependencies..."
+if ! command -v python3 &>/dev/null || ! command -v gcc &>/dev/null || [ ! -f /usr/include/python3*/Python.h ] 2>/dev/null; then
+    echo "python3, gcc or python3 headers are missing. Attempting to install..."
     if command -v apt-get &>/dev/null; then
-        apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3
+        apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-dev gcc
     elif command -v dnf &>/dev/null; then
-        dnf install -y python3
+        dnf install -y python3 python3-devel gcc
     elif command -v yum &>/dev/null; then
-        yum install -y python3
+        yum install -y python3 python3-devel gcc
     elif command -v zypper &>/dev/null; then
-        zypper install -y python3
+        zypper install -y python3 python3-devel gcc
     elif command -v pacman &>/dev/null; then
-        pacman -Sy --noconfirm python
+        pacman -Sy --noconfirm python gcc
     else
-        echo "Could not find a supported package manager to install python3. Please install it manually."
+        echo "Could not find a supported package manager to install dependencies. Please install python3, python3-dev and gcc manually."
         exit 1
     fi
 fi
