@@ -48,7 +48,7 @@ chown jolly-mx:jolly-mx "$CSVFILE"
 chmod 666 "$CSVFILE"
 
 echo "[*] Checking for python3 and compile dependencies..."
-if ! command -v python3 &>/dev/null || ! command -v gcc &>/dev/null || [ ! -f /usr/include/python3*/Python.h ] 2>/dev/null; then
+if ! command -v python3 &>/dev/null || ! command -v gcc &>/dev/null || ! ls /usr/include/python3*/Python.h &>/dev/null; then
     echo "python3, gcc or python3 headers are missing. Attempting to install..."
     if command -v apt-get &>/dev/null; then
         apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-dev gcc
