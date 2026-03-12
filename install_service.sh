@@ -51,7 +51,9 @@ echo "[*] Checking for python3 and compile dependencies..."
 if ! command -v python3 &>/dev/null || ! command -v gcc &>/dev/null || ! ls /usr/include/python3*/Python.h &>/dev/null; then
     echo "python3, gcc or python3 headers are missing. Attempting to install..."
     if command -v apt-get &>/dev/null; then
-        apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-dev gcc
+        apt-get update && \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y python3 gcc && \
+        DEBIAN_FRONTEND=noninteractive apt-get install -y python3-dev
     elif command -v dnf &>/dev/null; then
         dnf install -y python3 python3-devel gcc
     elif command -v yum &>/dev/null; then
@@ -141,5 +143,5 @@ echo "----------------------------------------------"
 echo "Integration with Postfix:"
 echo "in /etc/postfix/main.cf add:"
 echo "smtpd_recipient_restrictions ="
-echo "  check_policy_service inet:127.0.0.1:10099"
+echo "  check_policy_service inet:127.0.0.1:9732"
 echo "=============================================="

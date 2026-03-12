@@ -113,7 +113,7 @@ For example this could be:
 
 ```
 smtpd_relay_restrictions =
-        check_policy_service inet:127.0.0.1:10099,
+        check_policy_service inet:127.0.0.1:9732,
         permit_mynetworks,
         permit_sasl_authenticated,
         reject_unauth_destination
