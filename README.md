@@ -60,12 +60,14 @@ This should take care of installing and creating the service. Check the service 
 
 Else, to quickly set it up, after checking out the code,
 
+- install python3-venv
 - create a virtual environment in `.venv` and activate it
 - installport requirements
 - copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
 - run the service for testing
 
 ```bash
+    $ sudo apt-get install python3-venv
     $ python -m venv .venv
     $ . .venv/bin/activate
     $ pip install -r requirements.txt

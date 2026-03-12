@@ -47,6 +47,44 @@ touch "$CSVFILE"
 chown jolly-mx:jolly-mx "$CSVFILE"
 chmod 666 "$CSVFILE"
 
+echo "[*] Checking for python3..."
+if ! command -v python3 &>/dev/null; then
+    echo "python3 is not installed. Attempting to install..."
+    if command -v apt-get &>/dev/null; then
+        apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3
+    elif command -v dnf &>/dev/null; then
+        dnf install -y python3
+    elif command -v yum &>/dev/null; then
+        yum install -y python3
+    elif command -v zypper &>/dev/null; then
+        zypper install -y python3
+    elif command -v pacman &>/dev/null; then
+        pacman -Sy --noconfirm python
+    else
+        echo "Could not find a supported package manager to install python3. Please install it manually."
+        exit 1
+    fi
+fi
+
+echo "[*] Checking for python3 venv support..."
+if ! python3 -m venv --help &>/dev/null; then
+    echo "python3-venv is not installed. Attempting to install..."
+    if command -v apt-get &>/dev/null; then
+        apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv
+    elif command -v dnf &>/dev/null; then
+        dnf install -y python3-venv
+    elif command -v yum &>/dev/null; then
+        yum install -y python3-venv
+    elif command -v zypper &>/dev/null; then
+        zypper install -y python3-venv
+    elif command -v pacman &>/dev/null; then
+        pacman -Sy --noconfirm python
+    else
+        echo "Could not find a supported package manager to install python3-venv. Please install it manually."
+        exit 1
+    fi
+fi
+
 echo "[*] Setting up virtual environment..."
 # Run as jolly-mx so it owns the venv files
 sudo -u jolly-mx python3 -m venv "$DIR/.venv"
