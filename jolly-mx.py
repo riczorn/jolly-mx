@@ -18,12 +18,7 @@ Options:
     -v, --verbose        Increase verbosity level of logging
 
 Configuration File Format:
-    Each line should contain a pattern and a relay, separated by whitespace:
-    pattern relay_transport
-
-    Where:
-    - pattern is a mail domain, email or mx lookup pattern
-    - relay_transport is a Postfix transport map entry (e.g., relay:[mailtransport.example.com]:25)
+    The jolly-mx-yaml.example contains comments explaining the format.
 
 Description:
     Postfix sends the sender and recipient mail addresses to this policy service, which
@@ -52,10 +47,11 @@ Postfix Configuration:
         check_policy_service { inet:127.0.0.1:9732, timeout=10s, default_action=DUNNO }
 
     2. for higher throughput, the Postfix docs recommend spawning a separate process:
-    spawn_command = /path/to/jolly-mx.py
+        spawn_command = /path/to/jolly-mx.py. I don't think this makes sense here I get 
+        over 5,000 responses per second it shouldn't need it.
 
     Then reload Postfix:
-    systemctl reload postfix
+        systemctl reload postfix
 
 Useful links:
  - https://www.postfix.org/transport.5.html
@@ -147,6 +143,12 @@ def get_mx_for_message(sender, recipient, cache_ttl):
         mx, group = pick_server_for_group(sender_result)
         if mx and mx != "NO RESULT":
             return mx, group
+
+    # 6. Global fallback if roundrobin is enabled
+    if config.roundrobin:
+        mx_server = config.servers_obj.get_next()
+        if mx_server:
+            return mx_server.address, "roundrobin"
 
     return False, "n/a"
 

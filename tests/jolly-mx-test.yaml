@@ -38,6 +38,11 @@ config:
   # its choices. Useful for debugging before going live.
   enabled: false
 
+  # when roundrobin is true, the servers in the matching group, or the list
+  # of all servers, are returned on a round robin schedule.
+  # when roundrobin is false, DUNNO is returned.
+  roundrobin: true
+
   # unless the path is absolute, this will default to the
   # folder containing the calling script
   # if you do NOT wish to log, just omit this value
@@ -56,6 +61,7 @@ config:
   # restrict which remote servers may connect (IPv4, IPv6, or DNS names)
   # leave empty or set to 0.0.0.0 to accept from all
   allowed_hosts: []
+
 servers:
   names:
     # Define your server adddresses (name or IP)
@@ -91,28 +97,13 @@ servers:
     microbad: [mx7]
 
 sender_rules:
-  # the order of the rules is important: start from the longer emails down to the shortest,
-  # i.e. given the two rules:
-  # - office@example.com : bad
-  # - financial_office@example.com : good
-  # the first match will always be chosen even if the email is the second, because it is a match.
-  # hence domains should always come after emails only.
-
-  # in case no match is found in the rules, the message will use the full list of servers to send.
-
-  # Special `default` rule
-  # If the list of rules contains a `default` rule,
-  # any emails will default to this group instead of the full list of servers.
-
-  default: NO RESULT
-
-  # so if you just omit *default* it will return a server from the full list of servers
-  # if you want to return `NO RESULT` if no rules match, simply add
-  # `default: NO RESULT`
-  # and it will be returned with a 500 error code as Postfix expects.
+  # the order of the rules is important:
+  # hence email domains should always come after email addresses:
+  #   natasha@example.com: good
+  #   valia@example.com: bad
+  #   example.com: good
 
   # The rules are parsed until a match is found.
-  # Default must be the first rule.
 
   newsletter@example.com: bad
   roger@example.com: good
@@ -130,7 +121,7 @@ recipient_rules:
   hotmail.com: microsoft
 
 combined_rules:
-  # This section allows you to match combinations of sender and recipient rule results.
+  # Match combinations of sender and recipient rule results.
   # The key format is "sender_group,recipient_group".
   # If a match is found here, it takes precedence over both individual rules.
   # If sender is good and recipient is picky, use the picky servers;

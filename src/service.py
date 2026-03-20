@@ -31,7 +31,8 @@ class PolicyService:
         Args:
             config: the Config instance
             request_handler: callable(sender, recipient, cache_ttl) -> (mx, group)
-                The business logic function for routing messages.
+                The business logic function for routing messages
+                implemented in jolly-mx.py:get_mx_for_message()
         """
         self.config = config
         self.request_handler = request_handler
@@ -132,6 +133,7 @@ class PolicyService:
         sender = request_data.get('sender', '').lower()
         recipient = request_data.get('recipient', '').lower()
 
+        # invoke jolly-mx.py:get_mx_for_message()
         mx, group = self.request_handler(sender, recipient, self.config.cache_ttl)
 
         
@@ -158,6 +160,9 @@ class PolicyService:
     
 
         mx_host = mx if mx else "n/a"
+        # if action=="DUNNO" and self.config.roundrobin:
+        #     mx = self.config.servers.get_next()
+        #     action = f"FILTER {mx}"         
 
         if not self.config.enabled:
             action = "DUNNO"

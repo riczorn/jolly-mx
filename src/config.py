@@ -238,6 +238,7 @@ class Config:
                 
             cfg = self.config_dict['config']
             self.enabled = cfg.get('enabled', self.enabled)
+            self.roundrobin = cfg.get('roundrobin', True)
             self.log_file = cfg.get('log_file', '/var/log/jolly-mx.log')
             self.csv_file = cfg.get('csv_file', '/var/log/jolly-mx-messages.csv')
             self.verbose = cfg.get('verbose', self.verbose)
