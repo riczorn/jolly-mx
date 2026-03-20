@@ -252,6 +252,36 @@ class Config:
                     server_groups[server_group_name] = Servers(server_group_dict)
                     
                 self.server_groups = self.obj_dic(server_groups)
+
+            # Load combined rules
+            self.combined_rule_groups = self.obj_dic({})
+            if 'combined_rules' in self.config_dict and self.config_dict['combined_rules']:
+                log("# Combined Rules", False, True)
+                combined_rules = {}
+                for combined_key, server_list in self.config_dict['combined_rules'].items():
+                    log(f"  {combined_key}: {server_list}", False, True)
+                    # If the value is a group name (string), resolve it to the group's server list
+                    if isinstance(server_list, str):
+                        servers_section = self.config_dict.get('servers', {})
+                        if server_list in servers_section:
+                            server_list = servers_section[server_list]
+                        else:
+                            log(f"WARNING: Combined rule '{combined_key}' references unknown group '{server_list}'", True)
+                            continue
+                    # Create a Servers object from the list of server names
+                    server_group_array = {}
+                    for server_name in server_list:
+                        if hasattr(self.config_obj.servers.names, server_name):
+                            server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
+                        else:
+                            log(f"WARNING: Combined rule '{combined_key}' references unknown server '{server_name}'", True)
+                    
+                    if server_group_array:
+                        server_group_dict = self.obj_dic(server_group_array)
+                        combined_rules[combined_key] = Servers(server_group_dict)
+                
+                self.combined_rule_groups = self.obj_dic(combined_rules)
+
             log( f"Config.loaded\n", False, True )
 
     def test_domain_rules(self, email, domain, rule_type="sender_rules"):

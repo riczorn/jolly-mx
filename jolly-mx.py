@@ -256,21 +256,37 @@ def get_mx_for_message(sender, recipient, cache_ttl):
     action = "DUNNO"
     group_matched = "n/a"
     
-    # 1. Check recipient rules first
-    if action == "DUNNO" and recipient:
-        mx, group = get_next_server_for_email(recipient, cache_ttl, rule_type="recipient_rules")
-        if mx and mx != "NO RESULT":
-            action = f"FILTER {mx}"
-            group_matched = group
+    sender_result = "n/a"
+    recipient_result = "n/a"
 
-    # 2. Check sender rules if no recipient rule matched
-    if action == "DUNNO" and sender:
-        mx, group = get_next_server_for_email(sender, cache_ttl, rule_type="sender_rules")
-        if mx and mx != "NO RESULT":
-            action = f"FILTER {mx}"
-            group_matched = group
+    # 1. Resolve sender group
+    if sender:
+        sender_result, _ = get_rule_match_for_email(sender, cache_ttl, rule_type="sender_rules")
+    
+    # 2. Resolve recipient group
+    if recipient:
+        recipient_result, _ = get_rule_match_for_email(recipient, cache_ttl, rule_type="recipient_rules")
 
-    return mx, group_matched
+    # 3. Check combined rules
+    combined_key = f"{sender_result},{recipient_result}"
+    if hasattr(config, 'combined_rule_groups') and hasattr(config.combined_rule_groups, combined_key):
+        servers_obj = getattr(config.combined_rule_groups, combined_key)
+        mx = servers_obj.get_next().address
+        return mx, f"combined:{combined_key}"
+
+    # 4. Fallback: recipient rules
+    if recipient_result and recipient_result != "n/a":
+        mx, group = pick_server_for_group(recipient_result)
+        if mx and mx != "NO RESULT":
+            return mx, group
+
+    # 5. Fallback: sender rules
+    if sender_result and sender_result != "n/a":
+        mx, group = pick_server_for_group(sender_result)
+        if mx and mx != "NO RESULT":
+            return mx, group
+
+    return False, "n/a"
 
 def send_response(conn, action):
     """Send a formatted policy response to Postfix."""
@@ -337,7 +353,10 @@ def handle_client(conn, addr, config):
 
 
 
-def get_next_server_for_email(email, cache_ttl, rule_type):
+def get_rule_match_for_email(email, cache_ttl, rule_type):
+    """
+    Find the matching rule for an email without picking a server.
+    """
     mx_server_group = False
     default = False
     domain = email.split('@')[1] if '@' in email else ''
@@ -353,11 +372,19 @@ def get_next_server_for_email(email, cache_ttl, rule_type):
         if not mx_server_group:
             mx_server_group, default = config.test_domain_rules(email, domain, rule_type=rule_type)
 
-    if mx_server_group == 'NO RESULT' and (default == 'NO RESULT' or not default):
+    if not mx_server_group:
+        mx_server_group = default if default else "n/a"
+
+    return mx_server_group, default
+
+def pick_server_for_group(mx_server_group):
+    """
+    Pick a server based on the matched group name.
+    """
+    if mx_server_group == 'NO RESULT':
         return "NO RESULT", mx_server_group
 
-    if not mx_server_group:
-        # No matching rule found
+    if not mx_server_group or mx_server_group == "n/a":
         return False, False
         
     servers_obj = config.get_server_group(mx_server_group)
@@ -367,6 +394,10 @@ def get_next_server_for_email(email, cache_ttl, rule_type):
     mx = servers_obj.get_next(mx_server_group).address
 
     return mx, mx_server_group
+
+def get_next_server_for_email(email, cache_ttl, rule_type):
+    mx_server_group, _ = get_rule_match_for_email(email, cache_ttl, rule_type)
+    return pick_server_for_group(mx_server_group)
     
 
 def main():

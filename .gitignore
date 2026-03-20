@@ -1,4 +1,5 @@
 start.sh
+docs
 .venv
 __pycache__
 jolly-mx.yaml
