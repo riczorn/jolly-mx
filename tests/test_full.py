@@ -60,9 +60,8 @@ def build_group_addresses(config_data):
 
     # group name -> set of addresses
     group_addresses = {}
-    for key, value in servers.items():
-        if key == 'names':
-            continue
+    groups = servers.get('groups', {})
+    for key, value in groups.items():
         if isinstance(value, list):
             group_addresses[key] = {server_addresses[s] for s in value}
 
@@ -210,21 +209,21 @@ def main():
             if valid == 'DUNNO':
                 if 'DUNNO' in response:
                     passed += 1
-                    print(f"  PASS line {lineno}: {sender} -> {recipient}  "
+                    print(f"  ✅ line {lineno}: {sender} -> {recipient}  "
                           f"expected=DUNNO  got=DUNNO")
                 else:
                     failed += 1
-                    msg = (f"  FAIL line {lineno}: {sender} -> {recipient}  "
+                    msg = (f"  ❌ line {lineno}: {sender} -> {recipient}  "
                            f"expected=DUNNO  got={response!r}")
                     print(msg)
                     errors.append(msg)
             elif address and address in valid:
                 passed += 1
-                print(f"  PASS line {lineno}: {sender} -> {recipient}  "
+                print(f"  ✅ line {lineno}: {sender} -> {recipient}  "
                       f"expected={expected}  got={address}")
             else:
                 failed += 1
-                msg = (f"  FAIL line {lineno}: {sender} -> {recipient}  "
+                msg = (f"  ❌ line {lineno}: {sender} -> {recipient}  "
                        f"expected={expected} (one of {valid})  got={address!r}  "
                        f"raw={response!r}")
                 print(msg)
@@ -238,7 +237,7 @@ def main():
                 print(f"  {err}")
             sys.exit(1)
         else:
-            print("\nAll tests passed!")
+            print("\n✅ All tests passed!")
 
     except Exception as e:
         print(f"\n--- Error: {e} ---")

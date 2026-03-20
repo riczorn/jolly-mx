@@ -27,9 +27,11 @@ def create_test_config():
                 'mx2': {'address': 'relay:[mx2.example.com]:25'},
                 'mx3': {'address': 'relay:[mx3.example.com]:25'}
             },
-            'good': ['mx1'],
-            'bad': ['mx2'],
-            'libero': ['mx3']
+            'groups': {
+                'good': ['mx1'],
+                'bad': ['mx2'],
+                'libero': ['mx3']
+            }
         },
         'sender_rules': {
             'good.sender@example.com': 'good',
@@ -102,10 +104,10 @@ def test_combined_rules():
         print(f"  Response: {resp3}")
         assert "FILTER relay:[mx3.example.com]:25" in resp3
 
-        print("\n--- Verification Passed! ---")
+        print("\n✅ Verification Passed!")
         
     except Exception as e:
-        print(f"\n--- Verification Failed: {e} ---")
+        print(f"\n❌ Verification Failed: {e}")
         # print stderr if server crashed
         if server_proc.poll() is not None:
             stdout, stderr = server_proc.communicate()

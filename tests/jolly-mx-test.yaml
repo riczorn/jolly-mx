@@ -78,12 +78,13 @@ servers:
       address: relay:[mx7.example.com]:25
 
   # create convenient groups of servers using the server names above
-  good: [mx1, mx2, mx3]
-  bad: [mx4, mx5, mx6, mx7]
-  picky: [mx3]
-  gmail: [mx1, mx3]
-  microsoft: [mx2, mx4]
-  microbad: [mx7]
+  groups:
+    good: [mx1, mx2, mx3]
+    bad: [mx4, mx5, mx6, mx7]
+    picky: [mx3]
+    gmail: [mx1, mx3]
+    microsoft: [mx2, mx4]
+    microbad: [mx7]
 
 sender_rules:
   # the order of the rules is important: start from the longer emails down to the shortest,

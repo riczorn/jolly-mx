@@ -263,11 +263,10 @@ class Config:
                 self.servers_obj = Servers(self.config_obj.servers.names)
                 self.servers = self.servers_obj.servers
                 
-                # Create the server groups defined after servers.names in the configuration
-                server_groups_names = [sg for sg in vars(self.config_obj.servers) if not sg.startswith('__') and not sg=='names']
-                server_groups = {} # object()
-                for server_group_name in server_groups_names:
-                    server_group_list = getattr(self.config_obj.servers, server_group_name)
+                # Create the server groups defined under servers.groups in the configuration
+                groups_dict = self.config_dict.get('servers', {}).get('groups', {})
+                server_groups = {}
+                for server_group_name, server_group_list in groups_dict.items():
                     server_group_array = {}
                     for server_name in server_group_list:
                         server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
@@ -287,9 +286,9 @@ class Config:
                     log_debug(f"  {combined_key}: {server_list}")
                     # If the value is a group name (string), resolve it to the group's server list
                     if isinstance(server_list, str):
-                        servers_section = self.config_dict.get('servers', {})
-                        if server_list in servers_section:
-                            server_list = servers_section[server_list]
+                        groups_section = self.config_dict.get('servers', {}).get('groups', {})
+                        if server_list in groups_section:
+                            server_list = groups_section[server_list]
                         else:
                             log(f"WARNING: Combined rule '{combined_key}' references unknown group '{server_list}'", to_stderr=True)
                             continue
