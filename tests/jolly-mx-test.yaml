@@ -36,7 +36,7 @@
 config:
   # if not enabled, it will always respond "DUNNO", but it will log
   # its choices. Useful for debugging before going live.
-  enabled: false
+  enabled: true
 
   # when roundrobin is true, the servers in the matching group, or the list
   # of all servers, are returned on a round robin schedule.

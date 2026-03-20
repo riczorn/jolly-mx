@@ -108,7 +108,7 @@ def start_server(test_config_path):
     print(f"Starting server on port {PORT}...")
     proc = subprocess.Popen(
         [sys.executable, APP_PATH, '-p', str(PORT), '-c', test_config_path],
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE
     )
     time.sleep(1)  # wait for server to bind
@@ -207,16 +207,31 @@ def main():
             address = parse_response_address(response)
 
             if valid == 'DUNNO':
-                if 'DUNNO' in response:
-                    passed += 1
-                    print(f"  ✅ line {lineno}: {sender} -> {recipient}  "
-                          f"expected=DUNNO  got=DUNNO")
+                roundrobin_enabled = config_data['config'].get('roundrobin', True)
+                if roundrobin_enabled:
+                    all_mxs = set(server_addresses.values())
+                    if address and address in all_mxs:
+                        passed += 1
+                        print(f"  ✅ line {lineno}: {sender} -> {recipient}  "
+                              f"expected=any_mx (roundrobin=true)  got={address}")
+                    else:
+                        failed += 1
+                        msg = (f"  ❌ line {lineno}: {sender} -> {recipient}  "
+                               f"expected=any_mx (roundrobin=true)  got={address!r}  "
+                               f"raw={response!r}")
+                        print(msg)
+                        errors.append(msg)
                 else:
-                    failed += 1
-                    msg = (f"  ❌ line {lineno}: {sender} -> {recipient}  "
-                           f"expected=DUNNO  got={response!r}")
-                    print(msg)
-                    errors.append(msg)
+                    if 'DUNNO' in response:
+                        passed += 1
+                        print(f"  ✅ line {lineno}: {sender} -> {recipient}  "
+                              f"expected=DUNNO  got=DUNNO")
+                    else:
+                        failed += 1
+                        msg = (f"  ❌ line {lineno}: {sender} -> {recipient}  "
+                               f"expected=DUNNO  got={response!r}")
+                        print(msg)
+                        errors.append(msg)
             elif address and address in valid:
                 passed += 1
                 print(f"  ✅ line {lineno}: {sender} -> {recipient}  "

@@ -93,7 +93,10 @@ def get_mx_records(domain, cache_ttl):
 
     # No valid cache entry or caching disabled, perform DNS lookup
     try:
-        answers = dns.resolver.resolve(domain, 'MX')
+        resolver = dns.resolver.Resolver()
+        resolver.timeout = 2.0
+        resolver.lifetime = 3.0
+        answers = resolver.resolve(domain, 'MX')
         mx_records = [answer.exchange.to_text().rstrip('.').lower() for answer in answers]
 
         # Cache the result if caching is enabled
@@ -102,8 +105,9 @@ def get_mx_records(domain, cache_ttl):
                 service.mx_cache[domain] = (current_time, mx_records)
 
         return mx_records, False
-    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
-        # Cache empty result if caching is enabled
+    except Exception as e:
+        # Catch all DNS exceptions including dns.exception.Timeout
+        # Cache empty result if caching is enabled to prevent repeated slow queries
         if cache_ttl > 0:
             with service.cache_lock:
                 service.mx_cache[domain] = (current_time, [])

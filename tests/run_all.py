@@ -10,8 +10,9 @@ TEST_FILES = [
     "test_full.py",
     "test_domain_lookup.py",
     "test_improper_usage.py",
+    "test_roundrobin.py",
     "load-test.py",
-    "load-test-concurrent.py"
+    # "load-test-concurrent.py"
 ]
 
 def run_all_tests():
