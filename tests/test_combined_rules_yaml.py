@@ -37,7 +37,8 @@ def load_config():
         config_data['config'] = {}
 
     config_data['config']['enabled'] = True
-    config_data['config']['log_file'] = False
+    # config_data['config']['log_file'] = False
+    config_data['config']['verbose'] = True
     config_data['config']['bind_host'] = '127.0.0.1'
     config_data['config']['bind_port'] = PORT
 

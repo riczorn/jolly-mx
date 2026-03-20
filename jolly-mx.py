@@ -106,9 +106,11 @@ STATS_INTERVAL = 300
 
 # In-memory cache for MX records
 mx_cache = {}
+cache_lock = threading.Lock()
 
 # Global counter for active connections
 active_connections = 0
+connections_lock = threading.Lock()
 
 
 import src.config as cfg
@@ -121,6 +123,7 @@ def custom_sigint_handler(_sig, _frame):
     handle CTRL-C exit and other errors, and exits gracefully.
     """
     config.verbose = True
+    config.flush_csv()
     log(config.print_usage(), False, True)
     log(print_stats(), False, True)
     sys.exit(0)  # Exit cleanly
@@ -130,6 +133,7 @@ def custom_sigterm_handler(_sig, _frame):
     handle SIGTERM exit and other errors, and exits gracefully.
     """
     config.verbose = True
+    config.flush_csv()
     log(config.print_usage(), False, True)
     log(print_stats(), False, True)
     sys.exit(0)  # Exit cleanly
@@ -153,10 +157,11 @@ def get_mx_records(domain, cache_ttl):
     current_time = time.time()
 
     # Check if caching is enabled (positive TTL) and we have a valid cached entry
-    if cache_ttl > 0 and domain in mx_cache:
-        cache_time, mx_records = mx_cache[domain]
-        if current_time - cache_time < cache_ttl:
-            return mx_records, True
+    with cache_lock:
+        if cache_ttl > 0 and domain in mx_cache:
+            cache_time, mx_records = mx_cache[domain]
+            if current_time - cache_time < cache_ttl:
+                return mx_records, True
 
     # No valid cache entry or caching disabled, perform DNS lookup
     try:
@@ -165,13 +170,15 @@ def get_mx_records(domain, cache_ttl):
 
         # Cache the result if caching is enabled
         if cache_ttl > 0:
-            mx_cache[domain] = (current_time, mx_records)
+            with cache_lock:
+                mx_cache[domain] = (current_time, mx_records)
 
         return mx_records, False
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
         # Cache empty result if caching is enabled
         if cache_ttl > 0:
-            mx_cache[domain] = (current_time, [])
+            with cache_lock:
+                mx_cache[domain] = (current_time, [])
 
         return [], False
 
@@ -185,13 +192,14 @@ def cleanup_cache(cache_ttl):
     expired_keys = []
 
     # Identify expired entries
-    for domain, (cache_time, _) in mx_cache.items():
-        if current_time - cache_time >= cache_ttl:
-            expired_keys.append(domain)
+    with cache_lock:
+        for domain, (cache_time, _) in mx_cache.items():
+            if current_time - cache_time >= cache_ttl:
+                expired_keys.append(domain)
 
-    # Remove expired entries
-    for domain in expired_keys:
-        del mx_cache[domain]
+        # Remove expired entries
+        for domain in expired_keys:
+            del mx_cache[domain]
 
     if expired_keys:
         log(f"Garbage collection: removed {len(expired_keys)} expired cache entries, new total {len(mx_cache)}", False, True)
@@ -202,7 +210,8 @@ def cleanup_cache(cache_ttl):
 def print_stats():
     process = psutil.Process(os.getpid())
     memory_usage = process.memory_info().rss / 1024 / 1024  # Convert to MB
-    cache_size = len(mx_cache)
+    with cache_lock:
+        cache_size = len(mx_cache)
     return f"Memory usage: {memory_usage:.2f} MB, Cache items: {cache_size}, Active connections: {active_connections}"
 
 
@@ -253,9 +262,6 @@ def process_policy_request(request_data, conn, config, cache_ttl):
 
 
 def get_mx_for_message(sender, recipient, cache_ttl):
-    action = "DUNNO"
-    group_matched = "n/a"
-    
     sender_result = "n/a"
     recipient_result = "n/a"
 
@@ -299,7 +305,8 @@ def send_response(conn, action):
 def handle_client(conn, addr, config):
     """Handle a client connection in a separate thread."""
     global active_connections
-    active_connections += 1
+    with connections_lock:
+        active_connections += 1
 
     try:
         # Set a timeout for client connections if enabled
@@ -349,7 +356,8 @@ def handle_client(conn, addr, config):
 
     finally:
         conn.close()
-        active_connections -= 1
+        with connections_lock:
+            active_connections -= 1
 
 
 
@@ -362,13 +370,15 @@ def get_rule_match_for_email(email, cache_ttl, rule_type):
     domain = email.split('@')[1] if '@' in email else ''
 
     if domain:
-        mx_records, _ = get_mx_records(domain, cache_ttl)
-        for mx in mx_records:
-            mx_server_group, default = config.test_domain_rules(email, mx, rule_type=rule_type)
-            if mx_server_group:
-                break
+        # Skip DNS lookups for sender rules — they match on email/domain, not MX records
+        if rule_type != "sender_rules":
+            mx_records, _ = get_mx_records(domain, cache_ttl)
+            for mx in mx_records:
+                mx_server_group, default = config.test_domain_rules(email, mx, rule_type=rule_type)
+                if mx_server_group:
+                    break
         
-        # If still not found via MX lookup, try matching directly on the email/domain
+        # Try matching directly on the email/domain
         if not mx_server_group:
             mx_server_group, default = config.test_domain_rules(email, domain, rule_type=rule_type)
 
@@ -405,6 +415,7 @@ def main():
 
     # Load patterns from the specified configuration file
     config.load()
+    config.start_csv_flush_thread()
 
     bind_host = config.host
     bind_port = config.port

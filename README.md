@@ -4,7 +4,7 @@ This service acts as a Postfix Policy Server to dynamically route emails based o
 
 It implements a Weighted Round Robin to warm up mx servers
 
-This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by Filidor Wiese, but it is **no longer compatible**, neither in configuration, nor in functionality.
+This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by [Filidor Wiese](https://github.com/filidorwiese), but it is **no longer compatible**, neither in configuration, nor in functionality.
 
 ## Main features
 
@@ -138,9 +138,33 @@ $ systemctl restart jolly-mx
 Begin with `enabled: false`, then inspect the logs and only enable it once it behaves as you expect.
 The log files locations are set in `/etc/postfix/jolly-mx.yaml`.
 
+### Combined Rules
+
+Combined rules let you fine-tune server selection based on the **combination** of sender and recipient rule results. They are evaluated **before** the individual sender/recipient fallback, so a combined rule always takes precedence.
+
+The key format is `"sender_group,recipient_group"`, and the value can be either a group name or an explicit list of server names:
+
+```yaml
+combined_rules:
+  # Use the existing "picky" group
+  "good,picky": picky
+
+  # Override: bad sender to a 'good' recipient still uses the bad servers
+  "bad,good": bad
+
+  # Explicit server list
+  "bad,picky": [mx7]
+  "bad,gmail": [mx5, mx6]
+
+  # Another group name
+  "bad,microsoft": microbad
+```
+
+If no combined rule matches, the service falls back to the recipient rule, then the sender rule.
+
 ## End of jolly-mx specific part
 
-I am attaching the mx matching description from the original README below, as it appeared at the time of this fork October 3rd, 2025.
+I am attaching the mx matching description from the original README by [Filidor Wiese](https://github.com/filidorwiese) below, as it appeared at the time of my original fork October 3rd, 2025.
 
 # Postfix MX Pattern Router Service
 

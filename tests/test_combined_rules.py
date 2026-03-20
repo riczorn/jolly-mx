@@ -16,7 +16,7 @@ def create_test_config():
     config_data = {
         'config': {
             'enabled': True,
-            'log_file': False,
+            'log_file': '/var/log/jolly-mx.log',
             'bind_host': '127.0.0.1',
             'bind_port': PORT
         },

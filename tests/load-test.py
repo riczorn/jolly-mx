@@ -28,6 +28,8 @@ def main():
         config.servers_obj.get_next()
         
     config.servers_obj.print()
+    print("-------------")
+    print(config.print_usage())
 
 if __name__ == '__main__':
     main()

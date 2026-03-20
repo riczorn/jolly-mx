@@ -2,6 +2,7 @@ import yaml
 import logging
 import sys
 import datetime
+import threading
 
 config = None
 
@@ -33,6 +34,7 @@ class Servers:
     def __init__(self, server_list):
         self.servers = []
         self.current = -1
+        self.lock = threading.Lock()
         percent_sum = 0
         # build the main list of server names:
         for attr in vars(server_list):
@@ -73,28 +75,29 @@ class Servers:
                 server.perc_current = server.mails_sent / total_mails
 
     def get_next(self, mx_identifier = False):
-        chosen_server = False
+        with self.lock:
+            chosen_server = False
 
-        if mx_identifier:
-            chosen_server = self.get(mx_identifier)
+            if mx_identifier:
+                chosen_server = self.get(mx_identifier)
 
-        if not chosen_server:
-            current = (self.current + 1 ) % len(self.servers)
-            self.calc_perc()
-            
-            found = False
-            iteration = 0
-            while iteration < len(self.servers) and not found:
-                iteration += 1
-                if self.servers[current].perc_current < self.servers[current].perc_target:
-                    self.current = current
-                    found = True
-                    break
-                current = (current + 1 ) % len(self.servers)
-            chosen_server = self.servers[self.current]
+            if not chosen_server:
+                current = (self.current + 1 ) % len(self.servers)
+                self.calc_perc()
+                
+                found = False
+                iteration = 0
+                while iteration < len(self.servers) and not found:
+                    iteration += 1
+                    if self.servers[current].perc_current < self.servers[current].perc_target:
+                        self.current = current
+                        found = True
+                        break
+                    current = (current + 1 ) % len(self.servers)
+                chosen_server = self.servers[self.current]
 
-        chosen_server.mails_sent += 1
-        return chosen_server
+            chosen_server.mails_sent += 1
+            return chosen_server
 
     def get(self, name):
         for server in self.servers:
@@ -109,6 +112,9 @@ class Config:
         self.config_obj = None
         self.servers = []
         self.logger = False
+        self.csv_buffer = []
+        self.csv_lock = threading.Lock()
+        self.csv_flush_thread = None
         self.enabled = False
         
         self.verbose = False
@@ -297,9 +303,20 @@ class Config:
                 default = value
                 continue
                 
-            if email == rule or rule in domain or rule in email:
+            matched = False
+            if '@' in rule:
+                # Email rule: exact match only
+                matched = (email == rule)
+            elif rule in domain:
+                # MX domain match (substring of the MX record)
+                matched = True
+            elif domain == rule or domain.endswith('.' + rule):
+                # Domain suffix match
+                matched = True
+
+            if matched:
                 result = value
-                match_type = f"email {email}" if email == rule else f"MX domain {domain}" if rule in domain else f"mail domain {domain}"
+                match_type = f"email {email}" if '@' in rule else f"MX domain {domain}" if rule in domain else f"mail domain {domain}"
                 log( f"  Matched {match_type} against {rule} in {rule_type}: {value}", False, True )
                 break
 
@@ -315,6 +332,8 @@ class Config:
             server_groups = [sg for sg in vars(self.server_groups) if not sg.startswith('__')]
             if identifier in server_groups:
                 servers_obj = getattr(self.server_groups, identifier)
+            else:
+                log(f"WARNING: Unknown server group '{identifier}', using full server pool", True)
 
         return servers_obj
 
@@ -334,13 +353,33 @@ class Config:
         return output
 
     def print_csv(self, sender, recipient, mx_group, mx_host):
-        # self.logger.info( f"{sender};{recipient};{mx_group};{mx_host}" )
-        
         if hasattr(self, 'csv_file') and self.csv_file:
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             csv_line = f"{now_str};{sender};{recipient};{mx_group};{mx_host}\n"
-            try:
-                with open(self.csv_file, 'a') as f:
-                    f.write(csv_line)
-            except Exception as e:
-                log(f"ERROR: Failed to write to CSV log {self.csv_file} ({e})", False, False)
+            with self.csv_lock:
+                self.csv_buffer.append(csv_line)
+
+    def flush_csv(self):
+        """Write all buffered CSV lines to disk."""
+        if not hasattr(self, 'csv_file') or not self.csv_file:
+            return
+        with self.csv_lock:
+            if not self.csv_buffer:
+                return
+            lines = self.csv_buffer[:]
+            self.csv_buffer.clear()
+        try:
+            with open(self.csv_file, 'a') as f:
+                f.writelines(lines)
+        except Exception as e:
+            log(f"ERROR: Failed to write to CSV log {self.csv_file} ({e})", False, False)
+
+    def start_csv_flush_thread(self):
+        """Start a daemon thread that flushes the CSV buffer every 10 seconds."""
+        def _flush_loop():
+            while True:
+                import time
+                time.sleep(10)
+                self.flush_csv()
+        self.csv_flush_thread = threading.Thread(target=_flush_loop, daemon=True)
+        self.csv_flush_thread.start()

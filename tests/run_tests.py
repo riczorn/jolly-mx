@@ -5,7 +5,7 @@ import os
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
-CONFIG_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.yaml')
+CONFIG_PATH = os.path.join(PROJECT_DIR, 'tests/jolly-mx-test.yaml')
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'addresses.txt')
 
@@ -19,8 +19,8 @@ spec.loader.exec_module(jmx)
 
 # Set properties directly on config instead of using mock args
 jmx.config.config_file = CONFIG_PATH
-jmx.config.verbose = False
-jmx.config.quiet = True
+jmx.config.verbose = True
+jmx.config.quiet = False
 jmx.config.load()
 
 lines = open(ADDRESSES_PATH, 'r').read().strip().split('\n')[1:] # skip header
@@ -39,6 +39,3 @@ for line in lines:
     mx, group = jmx.get_mx_for_message(sender, recipient, 3600)
         
     print(f"{sender}\t{recipient}\t{group}\t{mx}")
-
-
-
