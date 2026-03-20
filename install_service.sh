@@ -63,8 +63,11 @@ if ! command -v python3 &>/dev/null || ! command -v gcc &>/dev/null || ! ls /usr
     elif command -v pacman &>/dev/null; then
         pacman -Sy --noconfirm python gcc
     else
-        echo "Could not find a supported package manager to install dependencies. Please install python3, python3-dev and gcc manually."
-        exit 1
+        echo "=========================================================================="
+        echo "⚠️  Could not find a supported package manager to install dependencies."
+        echo "Please install python3, python3-dev and gcc manually."
+        echo "=========================================================================="
+        read -p "Press Enter to continue once you have installed them, or Ctrl-C to abort."
     fi
 fi
 
@@ -82,8 +85,11 @@ if ! python3 -m venv --help &>/dev/null; then
     elif command -v pacman &>/dev/null; then
         pacman -Sy --noconfirm python
     else
-        echo "Could not find a supported package manager to install python3-venv. Please install it manually."
-        exit 1
+        echo "=========================================================================="
+        echo "⚠️  Could not find a supported package manager to install python3-venv."
+        echo "Please install it manually."
+        echo "=========================================================================="
+        read -p "Press Enter to continue once you have installed it, or Ctrl-C to abort."
     fi
 fi
 

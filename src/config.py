@@ -144,6 +144,7 @@ class Config:
         self.csv_lock = threading.Lock()
         self.csv_flush_thread = None
         self.enabled = False
+        self.allowed_ips = set()  # resolved set of allowed IPs (empty = allow all)
         
         self.verbose = False
         self.cache_ttl = 3600
@@ -240,6 +241,10 @@ class Config:
             self.log_file = cfg.get('log_file', '/var/log/jolly-mx.log')
             self.csv_file = cfg.get('csv_file', '/var/log/jolly-mx-messages.csv')
             self.verbose = cfg.get('verbose', self.verbose)
+            
+            # Resolve allowed_hosts to a set of IPs
+            allowed_hosts = cfg.get('allowed_hosts', [])
+            self.allowed_ips = self._resolve_allowed_hosts(allowed_hosts)
                 
             
             bind_host = cfg.get('bind_host', '127.0.0.1')
@@ -354,6 +359,33 @@ class Config:
                 log(f"WARNING: Unknown server group '{identifier}', using full server pool", to_stderr=True)
 
         return servers_obj
+
+    def _resolve_allowed_hosts(self, hosts):
+        """Resolve a list of hostnames/IPs to a set of IP addresses."""
+        import socket as _socket
+        if not hosts:
+            return set()
+        resolved = set()
+        for host in hosts:
+            host = str(host).strip()
+            if not host or host == '0.0.0.0':
+                return set()  # 0.0.0.0 means allow all
+            try:
+                # getaddrinfo handles IPv4, IPv6, and DNS names
+                results = _socket.getaddrinfo(host, None)
+                for family, _type, _proto, _canonname, sockaddr in results:
+                    resolved.add(sockaddr[0])
+            except _socket.gaierror:
+                log(f"WARNING: Could not resolve allowed_host '{host}'", to_stderr=True)
+        if resolved:
+            log_debug(f"# Allowed hosts: {resolved}")
+        return resolved
+
+    def is_allowed(self, addr_ip):
+        """Check if an IP address is in the allowed set. Empty set = allow all."""
+        if not self.allowed_ips:
+            return True
+        return addr_ip in self.allowed_ips
 
     def print_usage(self):
         output = "\nAll Servers\n"

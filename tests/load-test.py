@@ -66,6 +66,6 @@ sys.stdout = real_stdout
 
 # Print results
 rps = total_requests / elapsed if elapsed > 0 else 0
-print(f"Completed {total_requests:,} requests in {elapsed:.2f}s ({rps:,.0f} req/s)")
+print(f"✅ Completed {total_requests:,} requests in {elapsed:.2f}s ({rps:,.0f} req/s)")
 print()
 print(jmx.config.print_usage())

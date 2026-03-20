@@ -162,6 +162,29 @@ combined_rules:
 
 If no combined rule matches, the service falls back to the recipient rule, then the sender rule.
 
+## Security
+
+### Allowed Hosts
+
+Restrict which servers may connect using `allowed_hosts` in the config:
+
+```yaml
+config:
+  allowed_hosts: [127.0.0.1, 10.0.0.1, postfix.example.com]
+```
+
+Accepts IPv4, IPv6 addresses and DNS names (resolved at startup). Leave empty or set to `0.0.0.0` to accept from all. Rejected connections are logged to stderr and to the log file.
+
+### Input Sanitization
+
+All incoming requests are validated before processing:
+
+- **Size limit**: requests larger than 10 KB are rejected
+- **Required fields**: `protocol_name`, `sender`, and `recipient` must be present
+- **Email validation**: sender and recipient are checked against a standard email regex
+
+Invalid requests are logged and responded to with `DUNNO`.
+
 ## End of jolly-mx specific part
 
 I am attaching the mx matching description from the original README by [Filidor Wiese](https://github.com/filidorwiese) below, as it appeared at the time of my original fork October 3rd, 2025.
