@@ -134,14 +134,28 @@ class PolicyService:
 
         mx, group = self.request_handler(sender, recipient, self.config.cache_ttl)
 
-        if mx == "NO RESULT":
-            action = "500 NO RESULT"
-        elif mx == "DUNNO":
+        
+        if mx == "NO RESULT" or mx == "DUNNO":
             action = "DUNNO"
         elif mx:
             action = f"FILTER {mx}"
         else:
             action = "DUNNO"
+
+        # other things we could return:
+        #   action = "500 show the reason for the generic error"
+        #   action = "554 state the reason for blocking"
+        # or alternatively:
+        #   action = "REJECT Blacklisted IP"
+        #
+        #   action = "DEFER I'm tired now"      # ask the server to retry later
+        #   action = "HOLD some optional text"  # fool the spammer that the mail was accepted
+        #                                       # and instead put it on hold
+        #   action = "DISCARD <optional text>"  # discard and tell the spammer we accepted it"
+        #   action = "PREPEND <Header-Name: Header-Value>" # prepend a header to the email
+        #           e.g. action=PREPEND X-MyPolicy-Result: Pass
+        #   action = "FILTER mx1.example.com"   # send the mail to mx1.example.com
+    
 
         mx_host = mx if mx else "n/a"
 

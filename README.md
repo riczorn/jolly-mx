@@ -127,7 +127,7 @@ Then reload Postfix:
 $ postfix reload
 ```
 
-### 4. Configuration
+## Configuration
 
 Edit `/etc/postfix/jolly-mx.yaml` to your needs and reload the service with:
 
@@ -162,9 +162,9 @@ combined_rules:
 
 If no combined rule matches, the service falls back to the recipient rule, then the sender rule.
 
-## Security
+### Security
 
-### Allowed Hosts
+#### Allowed Hosts
 
 Restrict which servers may connect using `allowed_hosts` in the config:
 
@@ -175,7 +175,7 @@ config:
 
 Accepts IPv4, IPv6 addresses and DNS names (resolved at startup). Leave empty or set to `0.0.0.0` to accept from all. Rejected connections are logged to stderr and to the log file.
 
-### Input Sanitization
+#### Input Sanitization
 
 All incoming requests are validated before processing:
 
