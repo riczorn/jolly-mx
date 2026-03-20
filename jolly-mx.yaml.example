@@ -48,7 +48,7 @@ config:
   csv_file: /var/log/jolly-mx-messages.csv
 
   # be verbose in the log_file
-  debug: true
+  verbose: true
 
   bind_host: 127.0.0.1
   bind_port: 9732

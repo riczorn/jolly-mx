@@ -63,7 +63,6 @@ Options:
     --cache-ttl SEC      Cache TTL in seconds (default: 3600, where 0 disables cache)
     --timeout SEC        Client inactivity timeout in seconds (default: 30, where 0 disables timeout)
     -v, --verbose        Increase verbosity level of logging
-    -q, --quiet          Disables logging except for errors
 
 Configuration File Format:
     Each line should contain a pattern and a relay, separated by whitespace:
@@ -114,7 +113,7 @@ connections_lock = threading.Lock()
 
 
 import src.config as cfg
-from src.config import log
+from src.config import log, log_debug, log_to_file, log_request
 
 config = cfg.Config()
 
@@ -124,8 +123,8 @@ def custom_sigint_handler(_sig, _frame):
     """
     config.verbose = True
     config.flush_csv()
-    log(config.print_usage(), False, True)
-    log(print_stats(), False, True)
+    log(config.print_usage())
+    log(print_stats())
     sys.exit(0)  # Exit cleanly
 
 def custom_sigterm_handler(_sig, _frame):
@@ -134,8 +133,8 @@ def custom_sigterm_handler(_sig, _frame):
     """
     config.verbose = True
     config.flush_csv()
-    log(config.print_usage(), False, True)
-    log(print_stats(), False, True)
+    log(config.print_usage())
+    log(print_stats())
     sys.exit(0)  # Exit cleanly
 
 # Register the handler for the SIGINT and SIGTERM signals
@@ -202,7 +201,7 @@ def cleanup_cache(cache_ttl):
             del mx_cache[domain]
 
     if expired_keys:
-        log(f"Garbage collection: removed {len(expired_keys)} expired cache entries, new total {len(mx_cache)}", False, True)
+        log_debug(f"Garbage collection: removed {len(expired_keys)} expired cache entries, new total {len(mx_cache)}")
 
     return len(expired_keys)
 
@@ -223,7 +222,7 @@ def jobs_thread():
         current_time = time.time()
 
         # Report stats
-        log(print_stats(), False, True)
+        log_debug(print_stats())
 
         # Run garbage collection if cache is enabled and it's time
         if config.cache_ttl > 0 and current_time - last_gc_time >= GC_INTERVAL:
@@ -256,7 +255,7 @@ def process_policy_request(request_data, conn, config, cache_ttl):
         action = "DUNNO"
 
     config.print_csv(sender, recipient, group, mx_host)
-    log(f"Policy Request -> Sender: {sender}, Recipient: {recipient} => Action: {action} (Enabled: {config.enabled}, MX Group: {group})", False, True)
+    log_request(sender, recipient, group, mx_host, action, request_data)
     
     send_response(conn, action)
 
@@ -317,7 +316,7 @@ def handle_client(conn, addr, config):
         while True:
             data = conn.recv(1024)
             if not data:  # Connection closed by client
-                log(f"Connection closed by client: {addr}", False, True)
+                log_debug(f"Connection closed by client: {addr}")
                 break
 
             buffer += data.decode('utf-8')
@@ -340,15 +339,15 @@ def handle_client(conn, addr, config):
                 try:
                     process_policy_request(request_data, conn, config, config.cache_ttl)
                 except Exception as e:
-                    log(f"Error processing request: {e}", True)
+                    log(f"Error processing request: {e}", to_stderr=True)
                     send_response(conn, "DUNNO")
                     break
 
     except Exception as e:
         if isinstance(e, socket.timeout):
-            log(f"Connection timed out: {addr}", False, True)
+            log_debug(f"Connection timed out: {addr}")
         else:
-            log(f"Error handling connection: {e}", True)
+            log(f"Error handling connection: {e}", to_stderr=True)
             try:
                 send_response(conn, "DUNNO")
             except:
@@ -445,7 +444,7 @@ def main():
             client_thread.start()
 
     except Exception as e:
-        log(f"Failed to start server: {e}", True)
+        log(f"Failed to start server: {e}", to_stderr=True)
         sys.exit(1)
 
     finally:

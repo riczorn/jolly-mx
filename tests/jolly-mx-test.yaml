@@ -47,8 +47,8 @@ config:
   # save a csv file in the format: date;sender;recipient;mx_group;mx_host
   csv_file: /var/log/jolly-mx-messages.csv
 
-  # be verbose in the log_file
-  debug: true
+  # log payloads and results to the log file
+  verbose: true
 
   bind_host: 127.0.0.1
   bind_port: 9732

@@ -1,35 +1,71 @@
+#!/usr/bin/env python3
+"""
+Stress test: runs the addresses.txt test suite 1000 times (~53,000 requests)
+using the jolly-mx-test.yaml configuration loaded in-process.
+
+Console output from the log functions is suppressed via stdout redirection
+during the test loop, then restored to print results.
+"""
+
 import os
 import sys
+import io
+import re
+import time
+import importlib.util
 
-# Add the parent directory to the path so we can import src.config
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
+CONFIG_PATH = os.path.join(SCRIPT_DIR, 'jolly-mx-test.yaml')
+APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
+ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'addresses.txt')
 
-import src.config as cfg
+ITERATIONS = 5168
 
-def main():
-    config = cfg.Config()
-    
-    # Check if config file exists
-    config_path = 'jolly-mx.yaml'
-    if not os.path.exists(config_path):
-        config_path = 'jolly-mx.yaml.example'
-        if not os.path.exists(config_path):
-            print("Error: Could not find jolly-mx.yaml or jolly-mx.yaml.example")
-            sys.exit(1)
-    # Bypass CLI args mock requirement
-    config.verbose = True
-    config.quiet = False
-    config.config_file = config_path
+# Add project root to path so we can import src.config
+sys.path.insert(0, PROJECT_DIR)
 
-    config.load()
-    
-    print("Running load test for 125,000 requests...")
-    for i in range(125000):
-        config.servers_obj.get_next()
-        
-    config.servers_obj.print()
-    print("-------------")
-    print(config.print_usage())
+# Dynamically load jolly-mx.py because it contains a hyphen
+spec = importlib.util.spec_from_file_location("jolly_mx", APP_PATH)
+jmx = importlib.util.module_from_spec(spec)
+sys.modules["jolly_mx"] = jmx
+spec.loader.exec_module(jmx)
 
-if __name__ == '__main__':
-    main()
+# Configure and load
+jmx.config.config_file = CONFIG_PATH
+jmx.config.verbose = True
+jmx.config.load()
+
+# Parse addresses.txt
+lines = open(ADDRESSES_PATH, 'r').read().strip().split('\n')[1:]  # skip header
+address_pairs = []
+for line in lines:
+    if not line.strip():
+        continue
+    parts = re.split(r'[\s]+', line.strip())
+    if len(parts) >= 2:
+        address_pairs.append((parts[0], parts[1]))
+
+total_requests = len(address_pairs) * ITERATIONS
+print(f"Stress test: {len(address_pairs)} addresses × {ITERATIONS} iterations = {total_requests:,} requests")
+
+# Suppress stdout during the test loop
+real_stdout = sys.stdout
+sys.stdout = io.StringIO()
+
+start_time = time.time()
+
+for i in range(ITERATIONS):
+    for sender, recipient in address_pairs:
+        jmx.get_mx_for_message(sender, recipient, 3600)
+
+elapsed = time.time() - start_time
+
+# Restore stdout
+sys.stdout = real_stdout
+
+# Print results
+rps = total_requests / elapsed if elapsed > 0 else 0
+print(f"Completed {total_requests:,} requests in {elapsed:.2f}s ({rps:,.0f} req/s)")
+print()
+print(jmx.config.print_usage())

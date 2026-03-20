@@ -6,16 +6,45 @@ import threading
 
 config = None
 
-def log(message, to_stderr=False, needs_verbose=False):
-    """Logs and flushes to stdout/stderr."""
-    is_verbose = config.verbose if config else False
-    is_quiet = config.quiet if config else False
-
+def log(message, to_stderr=False):
+    """Operational console output (startup, errors, warnings). Always shown."""
     if to_stderr:
         sys.stderr.write(f"{message}\n")
-    elif (needs_verbose and is_verbose) or not needs_verbose and not is_quiet:
+        sys.stderr.flush()
+    else:
         sys.stdout.write(f"{message}\n")
-    sys.stdout.flush()
+        sys.stdout.flush()
+
+def log_debug(message):
+    """Console output only when verbose."""
+    if config.verbose:
+        sys.stdout.write(f"{message}\n")
+        sys.stdout.flush()
+
+def log_to_file(message):
+    """Write to log file only, never to console."""
+    if config.logger:
+        config.logger.info(message)
+
+def log_request(sender, recipient, group, mx, action, request_data=None):
+    """Per-request output to console and log file.
+    
+    Console: always shows summary line; verbose adds postfix payload.
+    Log file: verbose only — payload + summary.
+    """
+    summary = f"{sender}\t{recipient}\t{group}\t{mx}\t{action}"
+
+    if config.verbose and request_data:
+        # Console: show postfix payload + summary
+        payload = "\n".join(f"  {k}={v}" for k, v in request_data.items())
+        sys.stdout.write(f"{payload}\n{summary}\n")
+        sys.stdout.flush()
+        # Log file: payload + summary
+        log_to_file(f"{payload}\n{summary}")
+    else:
+        # Console: summary only
+        sys.stdout.write(f"{summary}\n")
+        sys.stdout.flush()
 
 
 class Server:
@@ -44,22 +73,19 @@ class Servers:
                     value.perc = 100
                 percent_sum += value.perc
                 self.servers.append (Server(attr, value.address, value.perc))
-                log (f"  {attr}: {value.address:20s} - {value.perc:4,d} %", False, True)
+                log_debug(f"  {attr}: {value.address:20s} - {value.perc:4,d} %")
 
         # now I have the servers loaded: let's update perc_target to the global percentage.
         if len(self.servers)>0:
             for server in self.servers:
                 server.perc_target = server.percent / percent_sum
 
-    def print(self, logger=None):
+    def print(self):
         """ print the servers usage """
         self.calc_perc()
         usage = f"  Name          # Sent |  curr. % / target %"
         for i in self.servers:
             usage = f"{usage}\n    {i.name:10s} {i.mails_sent:7,d} | {i.perc_current*100:8.4f} / {i.perc_target*100:8.4f}"
-        
-        if logger:
-            logger.info("\n" + usage) 
             
         return usage
         
@@ -108,6 +134,8 @@ class Servers:
 
 class Config:
     def __init__(self):
+        global config
+        config = self
         self.config_dict = {}
         self.config_obj = None
         self.servers = []
@@ -118,7 +146,6 @@ class Config:
         self.enabled = False
         
         self.verbose = False
-        self.quiet = False
         self.cache_ttl = 3600
         self.timeout = 600
         self.port = 9732
@@ -138,12 +165,9 @@ class Config:
                 handler.setFormatter(formatter)
                 logger.addHandler(handler)
             except Exception as e:
-                log(f"ERROR: Failed to setup file logger to {filename} ({e})", False, False)
+                log(f"ERROR: Failed to setup file logger to {filename} ({e})", to_stderr=True)
                 sys.exit(1) # Exit with error
         
-        screen_handler = logging.StreamHandler(stream=sys.stdout)
-        screen_handler.setFormatter(formatter)
-        logger.addHandler(screen_handler)
         return logger
     
     def obj_dic(self, d):
@@ -183,14 +207,9 @@ class Config:
                             action='store_true',
                             default=self.verbose,
                             help=f'Increase verbosity level (default: false)')
-        parser.add_argument('-q', '--quiet',
-                            action='store_true',
-                            default=self.quiet,
-                            help=f'Quiet mode, disables logging (default: false)')
         parsed_args = parser.parse_args()
 
         self.verbose = parsed_args.verbose
-        self.quiet = parsed_args.quiet
         self.cache_ttl = parsed_args.cache_ttl
         self.timeout = parsed_args.timeout
         self.port = parsed_args.port
@@ -217,12 +236,11 @@ class Config:
                 self.config_dict['config'] = {}
                 
             cfg = self.config_dict['config']
-            self.enabled = cfg.get('enabled', False)
+            self.enabled = cfg.get('enabled', self.enabled)
             self.log_file = cfg.get('log_file', '/var/log/jolly-mx.log')
             self.csv_file = cfg.get('csv_file', '/var/log/jolly-mx-messages.csv')
-            
-            if cfg.get('debug', False):
-                self.verbose = True
+            self.verbose = cfg.get('verbose', self.verbose)
+                
             
             bind_host = cfg.get('bind_host', '127.0.0.1')
             bind_port = int(cfg.get('bind_port', 9732))
@@ -234,9 +252,10 @@ class Config:
             
             self.config_obj = self.obj_dic(self.config_dict)
             
-            log("# MX Servers", False, True)
                 
             self.logger = self.setup_custom_logger('jolly-mx', self.log_file)
+            
+            log_debug("# MX Servers")
             
             self.server_groups = self.obj_dic({})
             
@@ -254,7 +273,7 @@ class Config:
                         server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
                     
                     server_group_dict = self.obj_dic(server_group_array)
-                    log( f"# MX group           {server_group_name}", False, True )
+                    log_debug(f"# MX group           {server_group_name}")
                     server_groups[server_group_name] = Servers(server_group_dict)
                     
                 self.server_groups = self.obj_dic(server_groups)
@@ -262,17 +281,17 @@ class Config:
             # Load combined rules
             self.combined_rule_groups = self.obj_dic({})
             if 'combined_rules' in self.config_dict and self.config_dict['combined_rules']:
-                log("# Combined Rules", False, True)
+                log_debug("# Combined Rules")
                 combined_rules = {}
                 for combined_key, server_list in self.config_dict['combined_rules'].items():
-                    log(f"  {combined_key}: {server_list}", False, True)
+                    log_debug(f"  {combined_key}: {server_list}")
                     # If the value is a group name (string), resolve it to the group's server list
                     if isinstance(server_list, str):
                         servers_section = self.config_dict.get('servers', {})
                         if server_list in servers_section:
                             server_list = servers_section[server_list]
                         else:
-                            log(f"WARNING: Combined rule '{combined_key}' references unknown group '{server_list}'", True)
+                            log(f"WARNING: Combined rule '{combined_key}' references unknown group '{server_list}'", to_stderr=True)
                             continue
                     # Create a Servers object from the list of server names
                     server_group_array = {}
@@ -280,7 +299,7 @@ class Config:
                         if hasattr(self.config_obj.servers.names, server_name):
                             server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
                         else:
-                            log(f"WARNING: Combined rule '{combined_key}' references unknown server '{server_name}'", True)
+                            log(f"WARNING: Combined rule '{combined_key}' references unknown server '{server_name}'", to_stderr=True)
                     
                     if server_group_array:
                         server_group_dict = self.obj_dic(server_group_array)
@@ -288,7 +307,7 @@ class Config:
                 
                 self.combined_rule_groups = self.obj_dic(combined_rules)
 
-            log( f"Config.loaded\n", False, True )
+            log_debug("Config.loaded\n")
 
     def test_domain_rules(self, email, domain, rule_type="sender_rules"):
         if not hasattr(self.config_obj, rule_type): return False, False
@@ -317,7 +336,7 @@ class Config:
             if matched:
                 result = value
                 match_type = f"email {email}" if '@' in rule else f"MX domain {domain}" if rule in domain else f"mail domain {domain}"
-                log( f"  Matched {match_type} against {rule} in {rule_type}: {value}", False, True )
+                log_debug(f"  Matched {match_type} against {rule} in {rule_type}: {value}")
                 break
 
         if not result:
@@ -333,23 +352,22 @@ class Config:
             if identifier in server_groups:
                 servers_obj = getattr(self.server_groups, identifier)
             else:
-                log(f"WARNING: Unknown server group '{identifier}', using full server pool", True)
+                log(f"WARNING: Unknown server group '{identifier}', using full server pool", to_stderr=True)
 
         return servers_obj
 
     def print_usage(self):
         output = "\nAll Servers\n"
-        if self.logger: self.logger.info("All Servers")
-        output += self.servers_obj.print(self.logger)
+        output += self.servers_obj.print()
         
         server_groups = [sg for sg in vars(self.server_groups) if not sg.startswith('__')]
         for server_name in server_groups:
             server_obj = self.get_server_group(server_name)
             
             output += f"\n\nGroup {server_name}\n"
-            if self.logger: self.logger.info(f"Group {server_name}")
-            output += server_obj.print(self.logger)
+            output += server_obj.print()
             
+        log_to_file(output)
         return output
 
     def print_csv(self, sender, recipient, mx_group, mx_host):
@@ -372,7 +390,7 @@ class Config:
             with open(self.csv_file, 'a') as f:
                 f.writelines(lines)
         except Exception as e:
-            log(f"ERROR: Failed to write to CSV log {self.csv_file} ({e})", False, False)
+            log(f"ERROR: Failed to write to CSV log {self.csv_file} ({e})", to_stderr=True)
 
     def start_csv_flush_thread(self):
         """Start a daemon thread that flushes the CSV buffer every 10 seconds."""

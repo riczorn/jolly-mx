@@ -18,7 +18,8 @@ def create_test_config():
             'enabled': True,
             'log_file': '/var/log/jolly-mx.log',
             'bind_host': '127.0.0.1',
-            'bind_port': PORT
+            'bind_port': PORT,
+            'verbose': True
         },
         'servers': {
             'names': {
@@ -52,7 +53,7 @@ def create_test_config():
 def start_server(test_config_path):
     print(f"Starting server on port {PORT}...")
     proc = subprocess.Popen(
-        [sys.executable, APP_PATH, '-p', str(PORT), '-c', test_config_path, '-q'],
+        [sys.executable, APP_PATH, '-p', str(PORT), '-c', test_config_path],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )

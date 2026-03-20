@@ -108,7 +108,7 @@ def create_test_config(config_data):
 def start_server(test_config_path):
     print(f"Starting server on port {PORT}...")
     proc = subprocess.Popen(
-        [sys.executable, APP_PATH, '-p', str(PORT), '-c', test_config_path, '-q'],
+        [sys.executable, APP_PATH, '-p', str(PORT), '-c', test_config_path],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
