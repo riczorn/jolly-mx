@@ -72,7 +72,7 @@ def send_raw_request(request_str):
             return f"ERROR: {e}"
 
 def craft_request(sender):
-    return f"request=smtpd_access_policy\nprotocol_state=RCPT\nprotocol_name=SMTP\nsender={sender}\nrecipient=bob@example.com\n\n"
+    return f"request=smtpd_access_policy\nsasl_username={sender}\nprotocol_state=RCPT\nprotocol_name=SMTP\nsender={sender}\nrecipient=bob@example.com\n\n"
 
 def test_roundrobin_behaviors():
     print("\n--- Testing Roundrobin and Enabled Flags ---")

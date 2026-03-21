@@ -65,7 +65,7 @@ def start_server(test_config_path):
 def send_request(sender, recipient):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect(('127.0.0.1', PORT))
-        request = f"request=smtpd_access_policy\nprotocol_state=RCPT\nprotocol_name=SMTP\nsender={sender}\nrecipient={recipient}\n\n"
+        request = f"request=smtpd_access_policy\nsasl_username={sender}\nprotocol_state=RCPT\nprotocol_name=SMTP\nsender={sender}\nrecipient={recipient}\n\n"
         s.sendall(request.encode('utf-8'))
         
         response = b""

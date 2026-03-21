@@ -122,6 +122,7 @@ def send_request(sender, recipient):
             f"request=smtpd_access_policy\n"
             f"protocol_state=RCPT\n"
             f"protocol_name=SMTP\n"
+            f"sasl_username={sender}\n"
             f"sender={sender}\n"
             f"recipient={recipient}\n\n"
         )
