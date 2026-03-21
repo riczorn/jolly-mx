@@ -189,7 +189,7 @@ Invalid requests are logged and responded to with `DUNNO`.
 
 ## Testing your rules
 
-Once you have everything set up with enabled: false in the configuration jolly-mx will start logging and updating the csv file `/var/log/jolly-mx-messages.csv`.
+Once you have everything set up with `enabled: false` in the configuration jolly-mx will start logging and updating the csv file `/var/log/jolly-mx-messages.csv`.
 
 Now it's time to start creating your servers, groups, sender and recipient rules and combined rules.
 At first you might want to keep `verbose: true` to inspect the actual Postfix payloads.
@@ -204,7 +204,39 @@ Once you are satisfied with your configuration, run jolly-mx from the command li
 
 ```
 
-Once it starts, you can stop it with `CTRL-C` and
+Once it starts, it means the syntax is ok. You can stop it with `CTRL-C` and restart the service with
+
+```bash
+    $ sudo systemctl restart jolly-mx
+```
+
+Try to work in small increments. All the while the csv file will grow. As long as you keep `enabled: false` you can collect actual traffic to test your rules on.
+
+### Testing with collected traffic
+
+Once you have collected enough traffic, you can test your rules with the `tests/test_rules.py` script.
+
+```bash
+    $ python3 tests/test_rules.py -c /etc/postfix/jolly-mx.yaml -i /var/log/jolly-mx-messages.csv
+```
+
+This way you can review your latest rules against your mailserver's actual traffic, inspect the decisions made and the load across servers.
+
+Repeat until happy, then turn `enabled:true` and watch the logs for a bit to ensure everything is working as expected. Review the logs for a couple of days, then turn `verbose:false` to only log errors and statistics.
+
+### Testing the code
+
+The `tests/run_all.py` script will run all but the load tests and report the results. Run the individual tests to see their detailed output.
+
+```bash
+    $ python3 tests/run_all.py
+    $ python3 tests/test_full.py
+    ...
+    # load test makes 273,000 requests on my system in less than 2 seconds
+    $ python3 tests/load_test.py
+  # load concurrent makes 680,000 requests on my system in less than 6 seconds
+    $ python3 tests/load_concurrent.py
+```
 
 ## End of jolly-mx specific part
 
@@ -239,3 +271,7 @@ The service uses substring matching for MX patterns, not exact matching. This me
 This project is licensed under the BSD 3-Clause License - see the LICENSE file for details.
 
 https://github.com/riczorn/jolly-mx
+
+```
+
+```

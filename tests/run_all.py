@@ -11,8 +11,8 @@ TEST_FILES = [
     "test_domain_lookup.py",
     "test_improper_usage.py",
     "test_roundrobin.py",
-    "load-test.py",
-    # "load-test-concurrent.py"
+    "load_test.py",
+    "load_concurrent.py"
 ]
 
 def run_all_tests():
