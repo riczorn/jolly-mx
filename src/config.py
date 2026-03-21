@@ -3,6 +3,7 @@ import logging
 import sys
 import datetime
 import threading
+import ipaddress
 
 config = None
 
@@ -26,13 +27,15 @@ def log_to_file(message):
     if config.logger:
         config.logger.info(message)
 
-def log_request(sender, recipient, group, mx, action, request_data=None):
+def log_request(sender, recipient, group, mx, action, request_data=None, direction=""):
     """Per-request output to console and log file.
     
     Console: always shows summary line; verbose adds postfix payload.
     Log file: verbose only — payload + summary.
     """
     summary = f"{sender}\t{recipient}\t{group}\t{mx}\t{action}"
+    if direction:
+        summary += f"\t{direction}"
 
     if config.verbose and request_data:
         # Console: show postfix payload + summary
@@ -145,6 +148,8 @@ class Config:
         self.csv_flush_thread = None
         self.enabled = False
         self.allowed_ips = set()  # resolved set of allowed IPs (empty = allow all)
+        self.local_networks = []
+        self.local_domains = []
         
         self.verbose = False
         self.cache_ttl = 3600
@@ -254,6 +259,14 @@ class Config:
             # Resolve allowed_hosts to a set of IPs
             allowed_hosts = cfg.get('allowed_hosts', [])
             self.allowed_ips = self._resolve_allowed_hosts(allowed_hosts)
+            
+            local_networks = cfg.get('local_networks', ['127.0.0.0/8'])
+            for net in local_networks:
+                try:
+                    self.local_networks.append(ipaddress.ip_network(net, strict=False))
+                except ValueError as e:
+                    log(f"WARNING: Invalid local network '{net}': {e}", to_stderr=True)
+            self.local_domains = [str(d).lower() for d in cfg.get('local_domains', [])]
                 
             
             bind_host = cfg.get('bind_host', '127.0.0.1')
@@ -396,6 +409,27 @@ class Config:
             return True
         return addr_ip in self.allowed_ips
 
+    def is_local_client(self, ip_str):
+        if not ip_str:
+            return False
+        try:
+            ip = ipaddress.ip_address(ip_str)
+            for net in self.local_networks:
+                if ip in net:
+                    return True
+        except ValueError:
+            pass
+        return False
+
+    def is_local_domain(self, domain):
+        if not domain:
+            return False
+        domain = domain.lower()
+        for local_dom in self.local_domains:
+            if domain == local_dom or domain.endswith('.' + local_dom):
+                return True
+        return False
+
     def print_usage(self):
         output = "\nAll Servers\n"
         output += self.servers_obj.print()
@@ -410,10 +444,13 @@ class Config:
         log_to_file(output)
         return output
 
-    def print_csv(self, sender, recipient, mx_group, mx_host):
+    def print_csv(self, sender, recipient, mx_group, mx_host, direction=""):
         if hasattr(self, 'csv_file') and self.csv_file:
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            csv_line = f"{now_str};{sender};{recipient};{mx_group};{mx_host}\n"
+            csv_line = f"{now_str};{sender};{recipient};{mx_group};{mx_host}"
+            if direction:
+                csv_line += f";{direction}"
+            csv_line += "\n"
             with self.csv_lock:
                 self.csv_buffer.append(csv_line)
 

@@ -234,7 +234,7 @@ The `tests/run_all.py` script will run all but the load tests and report the res
     ...
     # load test makes 273,000 requests on my system in less than 2 seconds
     $ python3 tests/load_test.py
-  # load concurrent makes 680,000 requests on my system in less than 6 seconds
+    # load concurrent makes 680,000 requests from 10 threads in less than 6 seconds. This tests concurrency issues.
     $ python3 tests/load_concurrent.py
 ```
 

@@ -20,7 +20,7 @@ from src.config import log, log_debug, log_to_file, log_request
 GC_INTERVAL = 3600
 STATS_INTERVAL = 300
 MAX_REQUEST_SIZE = 10240  # 10 KB max for a single policy request
-EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
+EMAIL_RE = re.compile(r'^[a-zA-Z0-9._%+=\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
 
 
 class PolicyService:
@@ -132,16 +132,51 @@ class PolicyService:
         """Process a single policy request: route, log, respond."""
         sender = request_data.get('sender', '').lower()
         recipient = request_data.get('recipient', '').lower()
-
-        # invoke jolly-mx.py:get_mx_for_message()
-        mx, group = self.request_handler(sender, recipient, self.config.cache_ttl)
-
+        sasl_username = request_data.get('sasl_username', '')
+        client_address = request_data.get('client_address', '')
         
-        if mx == "NO RESULT" or mx == "DUNNO":
-            action = "DUNNO"
-        elif mx:
-            action = f"FILTER {mx}"
+        recipient_domain = recipient.split('@')[-1] if '@' in recipient else recipient
+
+        mail_direction = ""
+        action = "DUNNO"
+        mx_host = "n/a"
+        group = "n/a"
+        
+        # Determine direction
+        if sasl_username:
+            mail_direction = "OUTGOING"
+        elif self.config.is_local_client(client_address):
+            mail_direction = "OUTGOING"
+        elif self.config.is_local_domain(recipient_domain):
+            mail_direction = "INCOMING"
         else:
+            # Open relay attempt!
+            if self.config.enabled:
+                action = "REJECT OPEN RELAY ATTEMPT"
+            else:
+                action = "DUNNO"
+            
+            self.config.print_csv(sender, recipient, "OPEN_RELAY", "n/a", direction="REJECTED")
+            log_request(sender, recipient, "OPEN_RELAY", "n/a", action, request_data, direction="REJECTED")
+            self.send_response(conn, action)
+            return
+
+        if mail_direction == "OUTGOING":
+            # invoke jolly-mx.py:get_mx_for_message()
+            mx, group = self.request_handler(sender, recipient, self.config.cache_ttl)
+
+            if mx == "NO RESULT" or mx == "DUNNO":
+                action = "DUNNO"
+            elif mx:
+                action = f"FILTER {mx}"
+            else:
+                action = "DUNNO"
+
+            mx_host = mx if mx else "n/a"
+
+            if not self.config.enabled:
+                action = "DUNNO"
+        elif mail_direction == "INCOMING":
             action = "DUNNO"
 
         # other things we could return:
@@ -157,18 +192,13 @@ class PolicyService:
         #   action = "PREPEND <Header-Name: Header-Value>" # prepend a header to the email
         #           e.g. action=PREPEND X-MyPolicy-Result: Pass
         #   action = "FILTER mx1.example.com"   # send the mail to mx1.example.com
-    
-
-        mx_host = mx if mx else "n/a"
+        
         # if action=="DUNNO" and self.config.roundrobin:
         #     mx = self.config.servers.get_next()
         #     action = f"FILTER {mx}"         
 
-        if not self.config.enabled:
-            action = "DUNNO"
-
-        self.config.print_csv(sender, recipient, group, mx_host)
-        log_request(sender, recipient, group, mx_host, action, request_data)
+        self.config.print_csv(sender, recipient, group, mx_host, direction=mail_direction)
+        log_request(sender, recipient, group, mx_host, action, request_data, direction=mail_direction)
 
         self.send_response(conn, action)
 
