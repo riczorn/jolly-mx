@@ -231,7 +231,15 @@ class Config:
             sys.exit(1)
 
         with open(self.config_file) as config_file:
-            self.config_dict = yaml.safe_load(config_file)
+            try:
+                self.config_dict = yaml.safe_load(config_file)
+            except yaml.YAMLError as exc:
+                log(f"ERROR: Failed to parse YAML configuration file {self.config_file}:\n  {exc}", True)
+                sys.exit(1)
+                
+            if not isinstance(self.config_dict, dict):
+                log(f"ERROR: Configuration file {self.config_file} is empty or not formatted correctly as a YAML dictionary.", True)
+                sys.exit(1)
             
             if 'config' not in self.config_dict or not self.config_dict['config']:
                 self.config_dict['config'] = {}

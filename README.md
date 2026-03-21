@@ -162,6 +162,8 @@ combined_rules:
 
 If no combined rule matches, the service falls back to the recipient rule, then the sender rule.
 
+See **Testing your rules** below.
+
 ### Security
 
 #### Allowed Hosts
@@ -184,6 +186,25 @@ All incoming requests are validated before processing:
 - **Email validation**: sender and recipient are checked against a standard email regex
 
 Invalid requests are logged and responded to with `DUNNO`.
+
+## Testing your rules
+
+Once you have everything set up with enabled: false in the configuration jolly-mx will start logging and updating the csv file `/var/log/jolly-mx-messages.csv`.
+
+Now it's time to start creating your servers, groups, sender and recipient rules and combined rules.
+At first you might want to keep `verbose: true` to inspect the actual Postfix payloads.
+
+Once you are satisfied with your configuration, run jolly-mx from the command line, you will receive an error message if there is a syntax error.
+
+```bash
+    $ python3 jolly-mx.py -c /etc/postfix/jolly-mx.yaml
+    ERROR: Failed to parse YAML configuration file jolly-mx.yaml:
+      mapping values are not allowed here
+      in "jolly-mx.yaml", line 5, column 7
+
+```
+
+Once it starts, you can stop it with `CTRL-C` and
 
 ## End of jolly-mx specific part
 

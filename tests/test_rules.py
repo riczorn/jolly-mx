@@ -17,7 +17,7 @@ def start_server(config_path):
     proc = subprocess.Popen(
         [sys.executable, APP_PATH, '-p', str(PORT), '-c', config_path],
         stdout=subprocess.DEVNULL,
-        stderr=subprocess.PIPE
+        stderr=subprocess.DEVNULL
     )
     time.sleep(1) # wait for server to bind
     return proc
