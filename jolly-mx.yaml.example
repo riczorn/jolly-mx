@@ -62,15 +62,9 @@ config:
   # leave empty or set to 0.0.0.0 to accept from all
   allowed_hosts: []
 
-  # networks considered local (for outgoing email detection)
-  local_networks:
-    - 127.0.0.0/8
-    - 10.0.0.0/8
-    - 192.168.0.0/16
-
-  # domains considered local (for incoming email detection)
-  local_domains:
-    - example.com
+  # list of local domains: keep the list empty and all mail will be accepted.
+  # otherwise, only the listed domains will be accepted.
+  local_domains: [example.com]
 
 servers:
   names:

@@ -5,3 +5,4 @@ __pycache__
 jolly-mx.yaml
 yolly-mx.log
 tests/*.txt 
+tests/payloads

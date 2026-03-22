@@ -21,7 +21,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 CONFIG_PATH = os.path.join(SCRIPT_DIR, 'jolly-mx-test.yaml')
-ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'addresses.txt')
+ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'payloads/addresses.txt')
 PORT = 10102
 
 
@@ -115,14 +115,15 @@ def start_server(test_config_path):
     return proc
 
 
-def send_request(sender, recipient):
+def send_request(sender, recipient, is_incoming=False):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect(('127.0.0.1', PORT))
+        sasl_line = "" if is_incoming else f"sasl_username={sender}\n"
         request = (
             f"request=smtpd_access_policy\n"
             f"protocol_state=RCPT\n"
             f"protocol_name=SMTP\n"
-            f"sasl_username={sender}\n"
+            f"{sasl_line}"
             f"sender={sender}\n"
             f"recipient={recipient}\n\n"
         )
@@ -147,10 +148,44 @@ def parse_response_address(response):
     Returns the address part, e.g. 'relay:[mx1.example.com]:25',
     or None if the response does not contain FILTER.
     """
-    # response is e.g. "action=FILTER relay:[mx1.example.com]:25"
     if 'FILTER ' in response:
         return response.split('FILTER ', 1)[1].strip()
     return None
+
+
+def run_test_iteration(lineno, desc, sender, recipient, expected, config_data, server_addresses, group_addresses):
+    try:
+        valid = expected_addresses(expected, server_addresses, group_addresses)
+    except ValueError as e:
+        return False, f"Line {lineno} [{desc}]: {e}"
+
+    try:
+        is_incoming = (desc == "REV")
+        response = send_request(sender, recipient, is_incoming=is_incoming)
+    except Exception as e:
+        return False, f"Line {lineno} [{desc}]: connection error: {e}"
+
+    address = parse_response_address(response)
+
+    if valid == 'DUNNO':
+        roundrobin_enabled = config_data['config'].get('roundrobin', True)
+        if roundrobin_enabled:
+            all_mxs = set(server_addresses.values())
+            if address and address in all_mxs:
+                return True, f"  ✅ line {lineno} [{desc}]: {sender} -> {recipient}  expected=any_mx (roundrobin=true)  got={address}"
+            elif 'DUNNO' in response:
+                return True, f"  ✅ line {lineno} [{desc}]: {sender} -> {recipient}  expected=DUNNO  got=DUNNO"
+            else:
+                return False, f"  ❌ line {lineno} [{desc}]: {sender} -> {recipient}  expected=any_mx/DUNNO  got={response!r}"
+        else:
+            if 'DUNNO' in response:
+                return True, f"  ✅ line {lineno} [{desc}]: {sender} -> {recipient}  expected=DUNNO  got=DUNNO"
+            else:
+                return False, f"  ❌ line {lineno} [{desc}]: {sender} -> {recipient}  expected=DUNNO  got={response!r}"
+    elif address and address in valid:
+        return True, f"  ✅ line {lineno} [{desc}]: {sender} -> {recipient}  expected={expected}  got={address}"
+    else:
+        return False, f"  ❌ line {lineno} [{desc}]: {sender} -> {recipient}  expected={expected} (one of {valid})  got={address!r}  raw={response!r}"
 
 
 def main():
@@ -191,58 +226,22 @@ def main():
             recipient = parts[1].strip()
             expected = parts[2].strip()
 
-            try:
-                valid = expected_addresses(expected, server_addresses, group_addresses)
-            except ValueError as e:
-                errors.append(f"Line {lineno}: {e}")
-                failed += 1
-                continue
-
-            try:
-                response = send_request(sender, recipient)
-            except Exception as e:
-                errors.append(f"Line {lineno}: connection error: {e}")
-                failed += 1
-                continue
-
-            address = parse_response_address(response)
-
-            if valid == 'DUNNO':
-                roundrobin_enabled = config_data['config'].get('roundrobin', True)
-                if roundrobin_enabled:
-                    all_mxs = set(server_addresses.values())
-                    if address and address in all_mxs:
-                        passed += 1
-                        print(f"  ✅ line {lineno}: {sender} -> {recipient}  "
-                              f"expected=any_mx (roundrobin=true)  got={address}")
-                    else:
-                        failed += 1
-                        msg = (f"  ❌ line {lineno}: {sender} -> {recipient}  "
-                               f"expected=any_mx (roundrobin=true)  got={address!r}  "
-                               f"raw={response!r}")
-                        print(msg)
-                        errors.append(msg)
-                else:
-                    if 'DUNNO' in response:
-                        passed += 1
-                        print(f"  ✅ line {lineno}: {sender} -> {recipient}  "
-                              f"expected=DUNNO  got=DUNNO")
-                    else:
-                        failed += 1
-                        msg = (f"  ❌ line {lineno}: {sender} -> {recipient}  "
-                               f"expected=DUNNO  got={response!r}")
-                        print(msg)
-                        errors.append(msg)
-            elif address and address in valid:
+            # First invocation: Forward testing
+            success, msg = run_test_iteration(lineno, "FWD", sender, recipient, expected, config_data, server_addresses, group_addresses)
+            print(msg)
+            if success:
                 passed += 1
-                print(f"  ✅ line {lineno}: {sender} -> {recipient}  "
-                      f"expected={expected}  got={address}")
             else:
                 failed += 1
-                msg = (f"  ❌ line {lineno}: {sender} -> {recipient}  "
-                       f"expected={expected} (one of {valid})  got={address!r}  "
-                       f"raw={response!r}")
-                print(msg)
+                errors.append(msg)
+
+            # Second invocation: Reverse testing
+            success, msg = run_test_iteration(lineno, "REV", recipient, sender, 'DUNNO', config_data, server_addresses, group_addresses)
+            print(msg)
+            if success:
+                passed += 1
+            else:
+                failed += 1
                 errors.append(msg)
 
         print(f"\n--- Results: {passed} passed, {failed} failed ---")

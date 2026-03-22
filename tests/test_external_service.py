@@ -12,7 +12,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 CONFIG_PATH = os.path.join(PROJECT_DIR, 'tests/jolly-mx-test.yaml')
-ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'addresses.txt')
+ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'payloads/addresses.txt')
 PORT = 10100
 HOST = '127.0.0.1'
 

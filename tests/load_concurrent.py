@@ -25,7 +25,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 CONFIG_PATH = os.path.join(SCRIPT_DIR, 'jolly-mx-test.yaml')
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
-ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'addresses.txt')
+ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'payloadsaddresses.txt')
 
 NUM_THREADS = 10
 ITERATIONS_PER_THREAD = 1292  # ~53 addresses × 1292 ≈ 68,500 per thread, ~274,000 total

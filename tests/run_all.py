@@ -11,6 +11,7 @@ TEST_FILES = [
     "test_domain_lookup.py",
     "test_improper_usage.py",
     "test_roundrobin.py",
+    "test_direction.py",
     # "load_test.py",
     # "load_concurrent.py"
 ]

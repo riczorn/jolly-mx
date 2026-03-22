@@ -424,6 +424,11 @@ class Config:
     def is_local_domain(self, domain):
         if not domain:
             return False
+        # always accept if local_domains is not set.
+        if len(self.local_domains) == 0:
+            return True
+
+        # accept domain only if it is in the local_domains list
         domain = domain.lower()
         for local_dom in self.local_domains:
             if domain == local_dom or domain.endswith('.' + local_dom):

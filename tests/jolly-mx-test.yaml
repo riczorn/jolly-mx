@@ -36,7 +36,7 @@
 config:
   # if not enabled, it will always respond "DUNNO", but it will log
   # its choices. Useful for debugging before going live.
-  enabled: true
+  enabled: false
 
   # when roundrobin is true, the servers in the matching group, or the list
   # of all servers, are returned on a round robin schedule.
@@ -61,6 +61,10 @@ config:
   # restrict which remote servers may connect (IPv4, IPv6, or DNS names)
   # leave empty or set to 0.0.0.0 to accept from all
   allowed_hosts: []
+
+  # list of local domains: keep the list empty and all mail will be accepted.
+  # otherwise, only the listed domains will be accepted.
+  local_domains: []
 
 servers:
   names:

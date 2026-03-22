@@ -18,7 +18,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 CONFIG_PATH = os.path.join(SCRIPT_DIR, 'jolly-mx-test.yaml')
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
-ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'addresses.txt')
+ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'payloads/addresses.txt')
 
 ITERATIONS = 5168
 
