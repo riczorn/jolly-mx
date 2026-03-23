@@ -12,6 +12,7 @@ TEST_FILES = [
     "test_improper_usage.py",
     "test_roundrobin.py",
     "test_direction.py",
+    "test_auto_populate.py",
     # "load_test.py",
     # "load_concurrent.py"
 ]

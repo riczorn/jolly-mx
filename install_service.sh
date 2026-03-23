@@ -75,7 +75,8 @@ echo "[*] Checking for python3 venv support..."
 if ! python3 -m venv --help &>/dev/null; then
     echo "python3-venv is not installed. Attempting to install..."
     if command -v apt-get &>/dev/null; then
-        apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv
+        PY_VER=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "3")
+        apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-venv "python${PY_VER}-venv"
     elif command -v dnf &>/dev/null; then
         dnf install -y python3-venv
     elif command -v yum &>/dev/null; then
