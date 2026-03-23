@@ -84,6 +84,7 @@ Query the service with
 request=smtpd_access_policy
 sender=newsletter@fasterweb.net
 recipient=xyz@gmail.com
+protocol_name=ESMTP
 
 EOF
 ```

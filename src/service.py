@@ -238,7 +238,7 @@ class PolicyService:
 
                     ok, reason = self.validate_request(request_data, len(request_block))
                     if not ok:
-                        log(f"Invalid request from {addr}: {reason}", to_stderr=True)
+                        log(f"Invalid request from {addr}: {reason}\n{request_data}", to_stderr=True)
                         log_to_file(f"Invalid request from {addr}: {reason}")
                         self.send_response(conn, "DUNNO")
                         continue
