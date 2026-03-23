@@ -157,6 +157,8 @@ class Config:
         self.port = 9732
         self.host = '127.0.0.1'
         self.config_file = 'jolly-mx.yaml'
+        self.auto_populate_local_domains = False
+        self.virtual_file = ''
         self.parse_args()
 
     def setup_custom_logger(self, name, filename):
@@ -267,7 +269,10 @@ class Config:
                 except ValueError as e:
                     log(f"WARNING: Invalid local network '{net}': {e}", to_stderr=True)
             self.local_domains = [str(d).lower() for d in cfg.get('local_domains', [])]
-                
+            
+            self.auto_populate_local_domains = cfg.get('auto_populate_local_domains', False)
+            self.virtual_file = cfg.get('virtual_file', '')
+            self.populate_local_domains()
             
             bind_host = cfg.get('bind_host', '127.0.0.1')
             bind_port = int(cfg.get('bind_port', 9732))
@@ -334,6 +339,26 @@ class Config:
                 self.combined_rule_groups = self.obj_dic(combined_rules)
 
             log_debug("Config.loaded\n")
+
+    def populate_local_domains(self):
+        if self.auto_populate_local_domains:
+            if os.path.exists(self.virtual_file):
+                try:
+                    with open(self.virtual_file, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith('#') or '@' in line:
+                                continue
+                            parts = line.split()
+                            if parts:
+                                domain = parts[0].lower()
+                                if domain not in self.local_domains:
+                                    self.local_domains.append(domain)
+                    log_debug(f"# Auto-populated local_domains from {self.virtual_file}")
+                except Exception as e:
+                    log(f"WARNING: Failed to read virtual_file {self.virtual_file}: {e}", to_stderr=True)
+            else:
+                log(f"WARNING: virtual_file {self.virtual_file} not found for auto-population.", to_stderr=True)
 
     def test_domain_rules(self, email, domain, rule_type="sender_rules"):
         if not hasattr(self.config_obj, rule_type): return False, False

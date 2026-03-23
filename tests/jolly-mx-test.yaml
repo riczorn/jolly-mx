@@ -59,12 +59,17 @@ config:
   bind_port: 9732
 
   # restrict which remote servers may connect (IPv4, IPv6, or DNS names)
+  # to this service.
   # leave empty or set to 0.0.0.0 to accept from all
-  allowed_hosts: []
+  allowed_hosts: [127.0.0.1]
 
   # list of local domains: keep the list empty and all mail will be accepted.
   # otherwise, only the listed domains will be accepted.
   local_domains: []
+
+  # automatically populate local domains from /etc/postfix/virtual
+  auto_populate_local_domains: true
+  virtual_file: /etc/postfix/virtual
 
 servers:
   names:

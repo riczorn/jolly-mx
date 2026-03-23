@@ -110,6 +110,13 @@ else
     echo "/etc/postfix/jolly-mx.yaml already exists, leaving it untouched."
 fi
 
+echo "[*] Configuring local domains logic..."
+if [ -f "/etc/postfix/virtual" ]; then
+    echo "Found /etc/postfix/virtual. Enabling dynamic population of local domains."
+    sed -i 's/auto_populate_local_domains: false/auto_populate_local_domains: true/' /etc/postfix/jolly-mx.yaml
+    sed -i -E 's|virtual_file: .*|virtual_file: /etc/postfix/virtual|' /etc/postfix/jolly-mx.yaml
+fi
+
 echo "[*] Creating systemd service file..."
 cat <<EOF > /etc/systemd/system/jolly-mx.service
 [Unit]
