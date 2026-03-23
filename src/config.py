@@ -342,6 +342,7 @@ class Config:
 
     def populate_local_domains(self):
         if self.auto_populate_local_domains:
+            import os
             if os.path.exists(self.virtual_file):
                 try:
                     with open(self.virtual_file, 'r') as f:

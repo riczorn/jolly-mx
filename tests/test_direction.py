@@ -45,13 +45,16 @@ def run_test_phase(local_domains):
         
     proc = subprocess.Popen(
         [sys.executable, APP_PATH, '-p', str(PORT), '-c', temp_config_path],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
     )
     time.sleep(1)
 
     if proc.poll() is not None:
+        stdout, stderr = proc.communicate()
         print("Server failed to start!")
+        print(f"STDOUT: {stdout.decode('utf-8')}")
+        print(f"STDERR: {stderr.decode('utf-8')}")
         os.remove(temp_config_path)
         os.remove(csv_path)
         sys.exit(1)
