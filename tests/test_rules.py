@@ -113,7 +113,7 @@ def main():
                      # Silently ignore malformed lines
                      continue
                 
-                # Format: date;sender;recipient;mx_group;mx_host
+                # Format: date;sender;recipient;mx_group;mx_host;client_address
                 sender = parts[1]
                 recipient = parts[2]
                 

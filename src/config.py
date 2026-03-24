@@ -27,13 +27,13 @@ def log_to_file(message):
     if config.logger:
         config.logger.info(message)
 
-def log_request(sender, recipient, group, mx, action, request_data=None, direction=""):
+def log_request(sender, recipient, group, mx, action, request_data=None, direction="", client_address=""):
     """Per-request output to console and log file.
     
     Console: always shows summary line; verbose adds postfix payload.
     Log file: verbose only — payload + summary.
     """
-    summary = f"{sender}\t{recipient}\t{group}\t{mx}\t{action}"
+    summary = f"{sender}\t{recipient}\t{group}\t{mx}\t{action}\t{client_address}"
     if direction:
         summary += f"\t{direction}"
 
@@ -475,10 +475,10 @@ class Config:
         log_to_file(output)
         return output
 
-    def print_csv(self, sender, recipient, mx_group, mx_host, direction=""):
+    def print_csv(self, sender, recipient, mx_group, mx_host, direction="", client_address=""):
         if hasattr(self, 'csv_file') and self.csv_file:
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            csv_line = f"{now_str};{sender};{recipient};{mx_group};{mx_host}"
+            csv_line = f"{now_str};{sender};{recipient};{mx_group};{mx_host};{client_address}"
             if direction:
                 csv_line += f";{direction}"
             csv_line += "\n"

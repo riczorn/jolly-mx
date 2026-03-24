@@ -156,8 +156,8 @@ class PolicyService:
             else:
                 action = "DUNNO"
             
-            self.config.print_csv(sender, recipient, "OPEN_RELAY", "n/a", direction="REJECTED")
-            log_request(sender, recipient, "OPEN_RELAY", "n/a", action, request_data, direction="REJECTED")
+            self.config.print_csv(sender, recipient, "OPEN_RELAY", "n/a", direction="REJECTED", client_address=client_address)
+            log_request(sender, recipient, "OPEN_RELAY", "n/a", action, request_data, direction="REJECTED", client_address=client_address)
             self.send_response(conn, action)
             return
 
@@ -197,8 +197,8 @@ class PolicyService:
         #     mx = self.config.servers.get_next()
         #     action = f"FILTER {mx}"         
 
-        self.config.print_csv(sender, recipient, group, mx_host, direction=mail_direction)
-        log_request(sender, recipient, group, mx_host, action, request_data, direction=mail_direction)
+        self.config.print_csv(sender, recipient, group, mx_host, direction=mail_direction, client_address=client_address)
+        log_request(sender, recipient, group, mx_host, action, request_data, direction=mail_direction, client_address=client_address)
 
         self.send_response(conn, action)
 

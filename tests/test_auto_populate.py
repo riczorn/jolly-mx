@@ -91,7 +91,7 @@ def test_auto_populate():
     for idx, (name, expected) in enumerate(expected_results):
         if idx < len(lines):
             csv_line = lines[idx].strip()
-            direction = csv_line.split(';')[-1] if len(csv_line.split(';')) >= 6 else "UNKNOWN"
+            direction = csv_line.split(';')[-1] if len(csv_line.split(';')) >= 7 else "UNKNOWN"
             if direction == expected:
                 print(f"  ✅ {name} -> {direction}")
                 passed += 1
