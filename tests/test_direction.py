@@ -138,7 +138,7 @@ def run_test_phase(local_domains):
         if idx < len(lines):
             csv_line = lines[idx].strip()
             parts = csv_line.split(';')
-            direction = parts[-1] if len(parts) >= 7 else "UNKNOWN"
+            direction = parts[6] if len(parts) >= 7 else "UNKNOWN"
             
             if direction == expected:
                 print(f"  ✅ {filename} -> {direction}")

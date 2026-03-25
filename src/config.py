@@ -506,12 +506,9 @@ class Config:
     def print_csv(self, sender, recipient, mx_group, mx_host, direction="", client_address="", sasl_username=""):
         if self.csv_file:
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            csv_line = f"{now_str};{sender};{recipient};{mx_group};{mx_host};{client_address}"
-            if direction:
-                csv_line += f";{direction}"
-            if sasl_username and sasl_username != sender:
-                csv_line += f";sasl:{sasl_username}"
-            csv_line += "\n"
+            csv_line = f"{now_str};{sender};{recipient};{mx_group};{mx_host};{client_address};{direction}"
+            sasl_info = f"sasl:{sasl_username}" if (sasl_username and sasl_username != sender) else ""
+            csv_line += f";{sasl_info}\n"
             with self.csv_lock:
                 self.csv_buffer.append(csv_line)
 
