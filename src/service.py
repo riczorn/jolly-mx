@@ -165,12 +165,12 @@ class PolicyService:
             # invoke jolly-mx.py:get_mx_for_message()
             mx, group = self.request_handler(sender, recipient, self.config.cache_ttl)
 
-            if mx == "NO RESULT" or mx == "DUNNO":
+            if mx == "NO RESULT" or not mx:
                 action = "DUNNO"
-            elif mx:
-                action = f"FILTER {mx}"
+            elif mx.split()[0] in ["DUNNO", "REJECT", "DEFER", "HOLD", "DISCARD"] or mx.startswith(("4", "5")):
+                action = mx
             else:
-                action = "DUNNO"
+                action = f"FILTER {mx}"
 
             mx_host = mx if mx else "n/a"
 

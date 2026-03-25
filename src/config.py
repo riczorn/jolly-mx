@@ -253,7 +253,6 @@ class Config:
                 
             cfg = self.config_dict['config']
             self.enabled = cfg.get('enabled', self.enabled)
-            self.roundrobin = cfg.get('roundrobin', True)
             self.log_file = cfg.get('log_file', '/var/log/jolly-mx.log')
             self.csv_file = cfg.get('csv_file', '/var/log/jolly-mx-messages.csv')
             self.verbose = cfg.get('verbose', self.verbose)
@@ -308,6 +307,29 @@ class Config:
                     server_groups[server_group_name] = Servers(server_group_dict)
                     
                 self.server_groups = self.obj_dic(server_groups)
+                
+                # Load servers.default configuration
+                self.servers_default_obj = None
+                self.servers_default_action = "DUNNO"
+                
+                default_val = self.config_dict.get('servers', {}).get('default', 'ALL')
+                if isinstance(default_val, list):
+                    # Array of servers [mx1,mx2,mx3]
+                    server_group_array = {}
+                    for server_name in default_val:
+                        if hasattr(self.config_obj.servers.names, server_name):
+                            server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
+                        else:
+                            log(f"WARNING: servers.default references unknown server '{server_name}'", to_stderr=True)
+                    if server_group_array:
+                        self.servers_default_obj = Servers(self.obj_dic(server_group_array))
+                elif isinstance(default_val, str):
+                    if default_val == "ALL":
+                        self.servers_default_obj = self.servers_obj
+                    elif default_val in server_groups:
+                        self.servers_default_obj = server_groups[default_val]
+                    else:
+                        self.servers_default_action = "DUNNO"
 
             # Load combined rules
             self.combined_rule_groups = self.obj_dic({})

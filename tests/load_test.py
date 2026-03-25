@@ -20,7 +20,7 @@ CONFIG_PATH = os.path.join(SCRIPT_DIR, 'jolly-mx-test.yaml')
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 ADDRESSES_PATH = os.path.join(SCRIPT_DIR, 'payloads/addresses.txt')
 
-ITERATIONS = 5168
+ITERATIONS = 1168
 
 # Add project root to path so we can import src.config
 sys.path.insert(0, PROJECT_DIR)

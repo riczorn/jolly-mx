@@ -17,7 +17,6 @@ def create_test_config():
     config_data = {
         'config': {
             'enabled': True,
-            'roundrobin': False,
             'log_file': '/var/log/jolly-mx.log',
             'bind_host': '127.0.0.1',
             'bind_port': PORT,
@@ -29,7 +28,8 @@ def create_test_config():
             },
             'groups': {
                 'microsoft': ['mx_microsoft']
-            }
+            },
+            'default': 'DUNNO'
         },
         'recipient_rules': {
             # Substring match in the MX record (not the recipient email domain itself)
@@ -100,7 +100,7 @@ def test_domain_lookup():
         print("\nTest 2: User at other.com (MX is mail.other.com)")
         mx, group = jmx.get_mx_for_message("sender@example.com", "user@other.com", 3600)
         print(f"  Response: mx={mx}, group={group}")
-        if mx == False and group == "n/a":
+        if mx == "DUNNO" and group == "default":
             print("  ✅ Did not match as expected")
             passed += 1
         else:

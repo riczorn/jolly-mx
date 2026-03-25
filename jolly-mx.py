@@ -148,11 +148,13 @@ def get_mx_for_message(sender, recipient, cache_ttl):
         if mx and mx != "NO RESULT":
             return mx, group
 
-    # 6. Global fallback if roundrobin is enabled
-    if config.roundrobin:
-        mx_server = config.servers_obj.get_next()
+    # 6. Global fallback: Check servers.default configuration
+    if hasattr(config, 'servers_default_obj') and config.servers_default_obj:
+        mx_server = config.servers_default_obj.get_next()
         if mx_server:
-            return mx_server.address, "roundrobin"
+            return mx_server.address, "default"
+    elif hasattr(config, 'servers_default_action') and config.servers_default_action:
+        return config.servers_default_action, "default"
 
     return False, "n/a"
 

@@ -13,10 +13,10 @@ APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 PORT = 10105
 
 def create_test_config(roundrobin=True, enabled=True):
+    default_action = 'ALL' if roundrobin else 'DUNNO'
     config_data = {
         'config': {
             'enabled': enabled,
-            'roundrobin': roundrobin,
             'log_file': '/var/log/jolly-mx.log',
             'bind_host': '127.0.0.1',
             'bind_port': PORT,
@@ -29,7 +29,8 @@ def create_test_config(roundrobin=True, enabled=True):
             },
             'groups': {
                 'good': ['mx1', 'mx2']
-            }
+            },
+            'default': default_action
         },
         'sender_rules': {
             'vip_sender@example.com': 'good'

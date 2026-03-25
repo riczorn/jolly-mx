@@ -38,11 +38,6 @@ config:
   # its choices. Useful for debugging before going live.
   enabled: false
 
-  # when roundrobin is true, the servers in the matching group, or the list
-  # of all servers, are returned on a round robin schedule.
-  # when roundrobin is false, DUNNO is returned.
-  roundrobin: true
-
   # unless the path is absolute, this will default to the
   # folder containing the calling script
   # if you do NOT wish to log, just omit this value
@@ -104,6 +99,8 @@ servers:
     gmail: [mx1, mx3]
     microsoft: [mx2, mx4]
     microbad: [mx7]
+
+  default: good
 
 sender_rules:
   # the order of the rules is important:

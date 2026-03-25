@@ -12,7 +12,7 @@ PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 PORT = 10101
 
-def create_test_config():
+def create_test_config(servers_default='good'):
     config_data = {
         'config': {
             'enabled': True,
@@ -31,7 +31,8 @@ def create_test_config():
                 'good': ['mx1'],
                 'bad': ['mx2'],
                 'libero': ['mx3']
-            }
+            },
+            'default': servers_default
         },
         'sender_rules': {
             'good.sender@example.com': 'good',
@@ -80,7 +81,7 @@ def send_request(sender, recipient):
         return response.decode('utf-8').strip()
 
 def test_combined_rules():
-    config_path = create_test_config()
+    config_path = create_test_config('good')
     server_proc = start_server(config_path)
     
     try:
@@ -104,6 +105,12 @@ def test_combined_rules():
         print(f"  Response: {resp3}")
         assert "FILTER relay:[mx3.example.com]:25" in resp3
 
+        # Test Case 4: unknown sender + unknown recipient -> mx1 (from default server rule)
+        print("Test 4: unknown sender -> unknown recipient")
+        resp4 = send_request('unknown@example.com', 'user@unknown.com')
+        print(f"  Response: {resp4}")
+        assert "FILTER relay:[mx1.example.com]:25" in resp4
+
         print("\n✅ Verification Passed!")
         
     except Exception as e:
@@ -118,5 +125,39 @@ def test_combined_rules():
         server_proc.wait()
         os.remove(config_path)
 
+def test_default_fallback():
+    print("\n--- Verifying Default Fallback Types ---")
+    
+    scenarios = [
+        ("DUNNO", "DUNNO", "Standard reply DUNNO"),
+        ("ALL", "FILTER relay:[mx1.example.com]:25", "ALL servers list roundrobin"),
+        ("bad", "FILTER relay:[mx2.example.com]:25", "Group name 'bad'"),
+        (["mx1", "mx3"], "FILTER relay:[mx1.example.com]:25", "Array of servers [mx1, mx3]")
+    ]
+    
+    for default_val, expected_resp, desc in scenarios:
+        print(f"\nTesting default: {default_val} ({desc})")
+        config_path = create_test_config(default_val)
+        server_proc = start_server(config_path)
+        
+        try:
+            resp = send_request('unknown@example.com', 'user@unknown.com')
+            print(f"  Response: {resp}")
+            assert expected_resp in resp, f"Expected {expected_resp} in {resp}"
+            print("  ✅ Passed")
+        except Exception as e:
+            print(f"\n❌ Verification Failed: {e}")
+            if server_proc.poll() is not None:
+                stdout, stderr = server_proc.communicate()
+                print(f"Server STDERR: {stderr.decode('utf-8')}")
+            server_proc.terminate()
+            os.remove(config_path)
+            sys.exit(1)
+        finally:
+            server_proc.terminate()
+            server_proc.wait()
+            os.remove(config_path)
+
 if __name__ == '__main__':
     test_combined_rules()
+    test_default_fallback()
