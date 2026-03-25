@@ -29,7 +29,7 @@ def test_auto_populate():
     config_data['config']['bind_host'] = '127.0.0.1'
     config_data['config']['bind_port'] = PORT
     config_data['config']['auto_populate_local_domains'] = True
-    config_data['config']['virtual_file'] = VIRTUAL_FILE
+    config_data['config']['postfix_virtual_file'] = VIRTUAL_FILE
     config_data['config']['csv_file'] = csv_path
     
     fd2, temp_config_path = tempfile.mkstemp(suffix='.yaml')

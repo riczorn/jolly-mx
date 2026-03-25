@@ -46,6 +46,28 @@ Sender, recipient and mx are logged.
 
 Below you can find some configuration options, and a strategy for testing your configuration before going live. All configuration options are documented in the example configuration file provided: `jolly-mx.yaml.example`.
 
+# Syntax
+
+For testing purposes, you can invoke the service by entering the virtual environment, and then running the script with the following options
+
+Usage:
+
+```bash
+    . .venv/bin/activate
+    python3 jolly-mx.py [options]
+```
+
+Options:
+
+```bash
+    -c, --config FILE    Path to configuration file (default: /etc/postfix/postfix-mx-pattern-router.conf)
+    -p, --port PORT      Port to listen on (default: 10099)
+    -H, --host HOST      Host to bind to (default: 127.0.0.1)
+    --cache-ttl SEC      Cache TTL in seconds (default: 3600, where 0 disables cache)
+    --timeout SEC        Client inactivity timeout in seconds (default: 30, where 0 disables timeout)
+    -v, --verbose        Increase verbosity level of logging
+```
+
 ## Installation
 
 ### 1a. With install script

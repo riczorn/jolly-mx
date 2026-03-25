@@ -23,7 +23,7 @@ def create_test_config(servers_default='good', reject_sender_login_mismatch=Fals
             'reject_sender_login_mismatch': reject_sender_login_mismatch
         },
         'servers': {
-            'names': {
+            'hosts': {
                 'mx1': {'address': 'relay:[mx1.example.com]:25'},
                 'mx2': {'address': 'relay:[mx2.example.com]:25'},
                 'mx3': {'address': 'relay:[mx3.example.com]:25'}

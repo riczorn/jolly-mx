@@ -12,9 +12,9 @@ PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 PORT = 10103
 
-def create_test_config(allowed_hosts=None):
-    if allowed_hosts is None:
-        allowed_hosts = []
+def create_test_config(allowed_clients=None):
+    if allowed_clients is None:
+        allowed_clients = []
         
     config_data = {
         'config': {
@@ -23,10 +23,10 @@ def create_test_config(allowed_hosts=None):
             'bind_host': '127.0.0.1',
             'bind_port': PORT,
             'verbose': True,
-            'allowed_hosts': allowed_hosts
+            'allowed_clients': allowed_clients
         },
         'servers': {
-            'names': {
+            'hosts': {
                 'mx1': {'address': 'relay:[mx1.example.com]:25'}
             },
             'groups': {
@@ -78,12 +78,12 @@ def test_improper_usage():
     failed = 0
     passed = 0
 
-    # 1. Test IP Blocked (allowed_hosts: 8.8.8.8)
-    config_path_blocked = create_test_config(allowed_hosts=['8.8.8.8'])
+    # 1. Test IP Blocked (allowed_clients: 8.8.8.8)
+    config_path_blocked = create_test_config(allowed_clients=['8.8.8.8'])
     server_proc = start_server(config_path_blocked)
     
     try:
-        print("\nTest 1: IP Blocked (allowed_hosts = 8.8.8.8)")
+        print("\nTest 1: IP Blocked (allowed_clients = 8.8.8.8)")
         valid_request = "request=smtpd_access_policy\nprotocol_state=RCPT\nprotocol_name=SMTP\nsender=alice@example.com\nrecipient=bob@example.com\n\n"
         resp = send_raw_request(valid_request)
         if resp == "" or "Connection reset" in resp:
@@ -97,8 +97,8 @@ def test_improper_usage():
         server_proc.wait()
         os.remove(config_path_blocked)
 
-    # 2. Test input sanitization (allowed_hosts: 0.0.0.0)
-    config_path_allowed = create_test_config(allowed_hosts=["0.0.0.0"])
+    # 2. Test input sanitization (allowed_clients: 0.0.0.0)
+    config_path_allowed = create_test_config(allowed_clients=["0.0.0.0"])
     server_proc = start_server(config_path_allowed)
     
     try:

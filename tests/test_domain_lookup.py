@@ -23,7 +23,7 @@ def create_test_config():
             'verbose': True
         },
         'servers': {
-            'names': {
+            'hosts': {
                 'mx_microsoft': {'address': 'relay:[mx.microsoft.example]:25'}
             },
             'groups': {

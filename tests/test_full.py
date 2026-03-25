@@ -51,7 +51,7 @@ def build_group_addresses(config_data):
     Also returns a mapping from server name -> relay address.
     """
     servers = config_data.get('servers', {})
-    names = servers.get('names', {})
+    names = servers.get('hosts', {})
 
     # server name -> address string, e.g. "mx1" -> "relay:[mx1.example.com]:25"
     server_addresses = {}

@@ -53,15 +53,15 @@ def log_request(sender, recipient, group, mx, action, request_data=None, directi
 
 
 class Server:
-    def __init__(self, name, address, perc_target=100): 
+    def __init__(self, name, address, weight_target=100): 
         self.name = name
         self.address = address
-        self.percent = perc_target  # 0..100 the initial required percentage, 
+        self.weight = weight_target  # 0..100 the initial required percentage, 
         """ the following two percentages are on the whole of the servers, hence it's divided (roughly) by 
             the number of servers (ns). It is divided exactly only if all servers have the same percentage.
         """
-        self.perc_target = 0    # 0..1/ns the percentage overall this single server aims to achieve
-        self.perc_current = 0   # 0..1/ns the percentage achieved so far
+        self.weight_target = 0    # 0..1/ns the percentage overall this single server aims to achieve
+        self.weight_current = 0   # 0..1/ns the percentage achieved so far
         self.mails_sent = 0
 
 class Servers:
@@ -69,32 +69,32 @@ class Servers:
         self.servers = []
         self.current = -1
         self.lock = threading.Lock()
-        percent_sum = 0
-        # build the main list of server names:
+        weight_sum = 0
+        # build the main list of server hosts:
         for attr in vars(server_list):
             if not attr.startswith('__'):
                 value = getattr(server_list, attr)
-                if not hasattr(value, 'perc'):
-                    value.perc = 100
-                percent_sum += value.perc
-                self.servers.append (Server(attr, value.address, value.perc))
-                log_debug(f"  {attr}: {value.address:20s} - {value.perc:4,d} %")
+                if not hasattr(value, 'weight'):
+                    value.weight = 100
+                weight_sum += value.weight
+                self.servers.append (Server(attr, value.address, value.weight))
+                log_debug(f"  {attr}: {value.address:20s} - {value.weight:4,d} %")
 
-        # now I have the servers loaded: let's update perc_target to the global percentage.
+        # now I have the servers loaded: let's update weight_target to the global percentage.
         if len(self.servers)>0:
             for server in self.servers:
-                server.perc_target = server.percent / percent_sum
+                server.weight_target = server.weight / weight_sum
 
     def print(self):
         """ print the servers usage """
-        self.calc_perc()
+        self.calc_weight()
         usage = f"  Name          # Sent |  curr. % / target %"
         for i in self.servers:
-            usage = f"{usage}\n    {i.name:10s} {i.mails_sent:7,d} | {i.perc_current*100:8.4f} / {i.perc_target*100:8.4f}"
+            usage = f"{usage}\n    {i.name:10s} {i.mails_sent:7,d} | {i.weight_current*100:8.4f} / {i.weight_target*100:8.4f}"
             
         return usage
         
-    def calc_perc(self):
+    def calc_weight(self):
         """ 
         for each server, updated its current percentage
         """
@@ -103,7 +103,7 @@ class Servers:
             total_mails += server.mails_sent
         if total_mails > 0:
             for server in self.servers:
-                server.perc_current = server.mails_sent / total_mails
+                server.weight_current = server.mails_sent / total_mails
 
     def get_next(self, mx_identifier = False):
         with self.lock:
@@ -114,13 +114,13 @@ class Servers:
 
             if not chosen_server:
                 current = (self.current + 1 ) % len(self.servers)
-                self.calc_perc()
+                self.calc_weight()
                 
                 found = False
                 iteration = 0
                 while iteration < len(self.servers) and not found:
                     iteration += 1
-                    if self.servers[current].perc_current < self.servers[current].perc_target:
+                    if self.servers[current].weight_current < self.servers[current].weight_target:
                         self.current = current
                         found = True
                         break
@@ -162,7 +162,7 @@ class Config:
         self.host = '127.0.0.1'
         self.config_file = 'jolly-mx.yaml'
         self.auto_populate_local_domains = False
-        self.virtual_file = ''
+        self.postfix_virtual_file = ''
         self.parse_args()
 
     def setup_custom_logger(self, name, filename):
@@ -262,9 +262,9 @@ class Config:
             self.csv_file = cfg.get('csv_file', '/var/log/jolly-mx-messages.csv')
             self.verbose = cfg.get('verbose', self.verbose)
             
-            # Resolve allowed_hosts to a set of IPs
-            allowed_hosts = cfg.get('allowed_hosts', [])
-            self.allowed_ips = self._resolve_allowed_hosts(allowed_hosts)
+            # Resolve allowed_clients to a set of IPs
+            allowed_clients = cfg.get('allowed_clients', [])
+            self.allowed_ips = self._resolve_allowed_clients(allowed_clients)
             
             local_networks = cfg.get('local_networks', ['127.0.0.0/8'])
             for net in local_networks:
@@ -275,7 +275,7 @@ class Config:
             self.local_domains = [str(d).lower() for d in cfg.get('local_domains', [])]
             
             self.auto_populate_local_domains = cfg.get('auto_populate_local_domains', False)
-            self.virtual_file = cfg.get('virtual_file', '')
+            self.postfix_virtual_file = cfg.get('postfix_virtual_file', '')
             self.populate_local_domains()
             
             bind_host = cfg.get('bind_host', '127.0.0.1')
@@ -295,8 +295,8 @@ class Config:
             
             self.server_groups = self.obj_dic({})
             
-            if hasattr(self.config_obj, 'servers') and hasattr(self.config_obj.servers, 'names'):
-                self.servers_obj = Servers(self.config_obj.servers.names)
+            if hasattr(self.config_obj, 'servers') and hasattr(self.config_obj.servers, 'hosts'):
+                self.servers_obj = Servers(self.config_obj.servers.hosts)
                 self.servers = self.servers_obj.servers
                 
                 # Create the server groups defined under servers.groups in the configuration
@@ -305,7 +305,7 @@ class Config:
                 for server_group_name, server_group_list in groups_dict.items():
                     server_group_array = {}
                     for server_name in server_group_list:
-                        server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
+                        server_group_array[server_name] = getattr(self.config_obj.servers.hosts, server_name)
                     
                     server_group_dict = self.obj_dic(server_group_array)
                     log_debug(f"# MX group           {server_group_name}")
@@ -322,8 +322,8 @@ class Config:
                     # Array of servers [mx1,mx2,mx3]
                     server_group_array = {}
                     for server_name in default_val:
-                        if hasattr(self.config_obj.servers.names, server_name):
-                            server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
+                        if hasattr(self.config_obj.servers.hosts, server_name):
+                            server_group_array[server_name] = getattr(self.config_obj.servers.hosts, server_name)
                         else:
                             log(f"WARNING: servers.default references unknown server '{server_name}'", to_stderr=True)
                     if server_group_array:
@@ -354,8 +354,8 @@ class Config:
                     # Create a Servers object from the list of server names
                     server_group_array = {}
                     for server_name in server_list:
-                        if hasattr(self.config_obj.servers.names, server_name):
-                            server_group_array[server_name] = getattr(self.config_obj.servers.names, server_name)
+                        if hasattr(self.config_obj.servers.hosts, server_name):
+                            server_group_array[server_name] = getattr(self.config_obj.servers.hosts, server_name)
                         else:
                             log(f"WARNING: Combined rule '{combined_key}' references unknown server '{server_name}'", to_stderr=True)
                     
@@ -371,9 +371,9 @@ class Config:
     def populate_local_domains(self):
         if self.auto_populate_local_domains:
             import os
-            if os.path.exists(self.virtual_file):
+            if os.path.exists(self.postfix_virtual_file):
                 try:
-                    with open(self.virtual_file, 'r') as f:
+                    with open(self.postfix_virtual_file, 'r') as f:
                         for line in f:
                             line = line.strip()
                             if not line or line.startswith('#') or '@' in line:
@@ -383,11 +383,11 @@ class Config:
                                 domain = parts[0].lower()
                                 if domain not in self.local_domains:
                                     self.local_domains.append(domain)
-                    log_debug(f"# Auto-populated local_domains from {self.virtual_file}")
+                    log_debug(f"# Auto-populated local_domains from {self.postfix_virtual_file}")
                 except Exception as e:
-                    log(f"WARNING: Failed to read virtual_file {self.virtual_file}: {e}", to_stderr=True)
+                    log(f"WARNING: Failed to read postfix_virtual_file {self.postfix_virtual_file}: {e}", to_stderr=True)
             else:
-                log(f"WARNING: virtual_file {self.virtual_file} not found for auto-population.", to_stderr=True)
+                log(f"WARNING: postfix_virtual_file {self.postfix_virtual_file} not found for auto-population.", to_stderr=True)
 
     def test_domain_rules(self, email, domain, rule_type="sender_rules"):
         if not hasattr(self.config_obj, rule_type): return False, False
@@ -436,7 +436,7 @@ class Config:
 
         return servers_obj
 
-    def _resolve_allowed_hosts(self, hosts):
+    def _resolve_allowed_clients(self, hosts):
         """Resolve a list of hostnames/IPs to a set of IP addresses."""
         import socket as _socket
         if not hosts:

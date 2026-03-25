@@ -23,7 +23,7 @@ def create_test_config(roundrobin=True, enabled=True):
             'verbose': True
         },
         'servers': {
-            'names': {
+            'hosts': {
                 'mx1': {'address': 'relay:[mx1.example.com]:25'},
                 'mx2': {'address': 'relay:[mx2.example.com]:25'}
             },

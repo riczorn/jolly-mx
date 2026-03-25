@@ -56,7 +56,7 @@ config:
   # restrict which remote servers may connect (IPv4, IPv6, or DNS names)
   # to this service.
   # leave empty or set to 0.0.0.0 to accept from all
-  allowed_hosts: [127.0.0.1]
+  allowed_clients: [127.0.0.1]
 
   # list of local domains: keep the list empty and all mail will be accepted.
   # otherwise, only the listed domains will be accepted.
@@ -64,32 +64,32 @@ config:
 
   # automatically populate local domains from /etc/postfix/virtual
   auto_populate_local_domains: true
-  virtual_file: /etc/postfix/virtual
+  postfix_virtual_file: /etc/postfix/virtual
 
   # if you use authenticated senders, reject the email if the sender address
   # does not match the sasl_username
   reject_sender_login_mismatch: false
 
 servers:
-  names:
+  hosts:
     # Define your server adddresses (name or IP)
-    # along with the optional perc: param, which defaults to 100.
-    # the `perc` influences how often this server is chosen in the iteration,
+    # along with the optional weight: param, which defaults to 100.
+    # the `weight` influences how often this server is chosen in the iteration,
     # with 0 = not chosen at all and 100 = chosen on every iteration.
     # the attribute name, i.e. `mx1`, is used below for creating groups
     mx1:
       address: relay:[mx1.example.com]:25
-      perc: 100 # default
+      weight: 100 # default
     mx2:
       address: relay:[mx2.example.com]:25
     mx3:
       address: relay:[mx3.example.com]:25
-      perc: 50
+      weight: 50
     mx4:
       address: relay:[mx4.example.com]:25
     mx5:
       address: relay:[mx5.example.com]:25
-      perc: 10
+      weight: 10
     mx6:
       address: relay:[mx6.example.com]:25
     mx7:
