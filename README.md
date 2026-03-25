@@ -2,7 +2,7 @@
 
 This service acts as a Postfix Policy Server to dynamically route emails based on both the sender and the recipient addresses. See [SMTPD Access Policy Delegation](https://www.postfix.org/SMTPD_POLICY_README.html)
 
-It implements a Weighted Round Robin to warm up mx servers
+It implements a Weighted Round Robin, with a percentage to warm up new mx servers
 
 This project started as a fork of [postfix-mx-pattern-router](https://github.com/filidorwiese/postfix-mx-pattern-router) by [Filidor Wiese](https://github.com/filidorwiese), but it is **no longer compatible**, neither in configuration, nor in functionality.
 
@@ -11,35 +11,46 @@ This project started as a fork of [postfix-mx-pattern-router](https://github.com
 - support for Weighted Round Robin mx server groups
 - gradually warm up new mailservers (using `perc`)
 - each rule can target a specific group
-- all servers are used if no group is chosen by a rule
-- a default rule will override the full list of servers
-- the configuration in yaml
+- a default rule will be used in case no rules match.
+- the configuration is in yaml.
   - **server perc** is the percentage out of 100 that this server should be chosen
   - **default** allows you to specify a default group; otherwise all servers are used
-  - 💡 The script will look for `jolly-mx.yaml` in `/etc/postfix/` first, and then in its local directory unless overridden by `-c`.
+  - 💡 The script will look for `jolly-mx.yaml` in `/etc/postfix/` first, and then in its local directory, unless overridden by `-c`.
 
 - on CTRL-C exit gracefully and show some stats such as :
 
 ```
-    Group good
-    Name          # Sent |  curr. % / target %
-        mx1              5 |  41.6667 /  40.0000
-        mx2              5 |  41.6667 /  40.0000
-        mx3              2 |  16.6667 /  20.0000
+Group good
+ Name          # Sent |  curr. % / target %
+   mx1         19,654 |  40.0008 /  40.0000
+   mx2         19,653 |  39.9988 /  40.0000
+   mx3          9,827 |  20.0004 /  20.0000
 
-    Group bad
-    Name          # Sent |  curr. % / target %
-        mx4              1 | 100.0000 /  32.2581
-        mx5              0 |   0.0000 /   3.2258
-        mx6              0 |   0.0000 /  32.2581
-        mx7              0 |   0.0000 /  32.2581
+Group bad
+ Name          # Sent |  curr. % / target %
+   mx4         79,248 |  32.2579 /  32.2581
+   mx5          7,925 |   3.2259 /   3.2258
+   mx6         79,248 |  32.2579 /  32.2581
+   mx7         79,249 |  32.2583 /  32.2581
 ```
+
+## How it works in short
+
+You start out with a `config:enabled = false`, and collect data.
+When disabled, or based on options, the service will return `action=DUNNO` to Postfix, i.e. ignore my answer and let Postfix continue processing the message unbothered.
+
+In the configuration you can define rules that match sender or recipient emails to one of several groups of MX servers.
+If no rule is matched, the default action will be executed, as described below.
+If the rule/default returns a list of servers, they will be iterated in a round-robin fashion on subsequent emails.
+Sender, recipient and mx are logged.
+
+Below you can find some configuration options, and a strategy for testing your configuration before going live. All configuration options are documented in the example configuration file provided: `jolly-mx.yaml.example`.
 
 ## Installation
 
-### 1. With install script
+### 1a. With install script
 
-There is an install script that may help you create the virtual environment, install the requirements and setup the service.
+You can find an install script that will install `python-venv`, create the virtual environment, install the `requirements.txt` and setup the service.
 
 Clone this repository and run the install script:
 
@@ -56,15 +67,17 @@ This should take care of installing and creating the service. Check the service 
     $ systemctl status jolly-mx
 ```
 
-### 1. Manual installation
+### 1b. Manual installation
 
 Else, to quickly set it up, after checking out the code,
 
 - install python3-venv
 - create a virtual environment in `.venv` and activate it
-- installport requirements
+- install requirements
 - copy `jolly-mx.yaml.example` to `/etc/postfix/jolly-mx.yaml`, edit your server groups and pattern rules
-- run the service for testing
+- create the `/var/log/jolly-mx.log` and `/var/log/jolly-mx-messages.csv`
+
+For example, on debian-ubuntu it will look something like this:
 
 ```bash
     $ sudo apt-get install python3-venv
@@ -72,11 +85,15 @@ Else, to quickly set it up, after checking out the code,
     $ . .venv/bin/activate
     $ pip install -r requirements.txt
     $ python jolly-mx.py -v
+    $ touch /var/log/jolly-mx.log
+    $ touch /var/log/jolly-mx-messages.csv
+
 ```
+
+I have omitted the service creation, user and group (you should run it under an unprivileged user), please check the install.sh script for details.
 
 ### 2. Testing
 
-You can find the tests in the `tests` folder.
 Query the service with
 
 ```bash
@@ -96,7 +113,7 @@ The service responds with:
 - `action=FILTER smtp:[mx_address]` if a match is found
 - `action=DUNNO` if **no** match is found (Postfix continues as normal)
 
-You will also find in the configured log files the messages received and their result.
+You will also find the messages received and their result in the log files.
 
 ### 3. Integration with Postfix
 
@@ -136,7 +153,7 @@ Edit `/etc/postfix/jolly-mx.yaml` to your needs and reload the service with:
 $ systemctl restart jolly-mx
 ```
 
-Begin with `enabled: false`, then inspect the logs and only enable it once it behaves as you expect.
+Always start your configuration with `enabled: false`, then inspect the logs and only enable it once it behaves as you expect.
 The log files locations are set in `/etc/postfix/jolly-mx.yaml`.
 
 ### Combined Rules
@@ -162,6 +179,15 @@ combined_rules:
 ```
 
 If no combined rule matches, the service falls back to the recipient rule, then the sender rule.
+
+If NO rules match, then the servers:default action will be performed:
+The `config:default` can be one of:
+
+| Default value | Description                                         |
+| ------------- | --------------------------------------------------- |
+| ALL           | roundrobin across all servers                       |
+| DUNNO         | return DUNNO to Postfix, i.e. let Postfix decide    |
+| bad           | a group name, on which roundrobin will be performed |
 
 See **Testing your rules** below.
 

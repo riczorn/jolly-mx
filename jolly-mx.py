@@ -131,8 +131,8 @@ def get_mx_for_message(sender, recipient, cache_ttl):
 
     # 3. Check combined rules
     combined_key = f"{sender_result},{recipient_result}"
-    if hasattr(config, 'combined_rule_groups') and hasattr(config.combined_rule_groups, combined_key):
-        servers_obj = getattr(config.combined_rule_groups, combined_key)
+    if config.combined_rule_groups and combined_key in config.combined_rule_groups:
+        servers_obj = config.combined_rule_groups[combined_key]
         mx = servers_obj.get_next().address
         return mx, f"combined:{combined_key}"
 
@@ -149,11 +149,11 @@ def get_mx_for_message(sender, recipient, cache_ttl):
             return mx, group
 
     # 6. Global fallback: Check servers.default configuration
-    if hasattr(config, 'servers_default_obj') and config.servers_default_obj:
+    if config.servers_default_obj:
         mx_server = config.servers_default_obj.get_next()
         if mx_server:
             return mx_server.address, "default"
-    elif hasattr(config, 'servers_default_action') and config.servers_default_action:
+    elif config.servers_default_action:
         return config.servers_default_action, "default"
 
     return False, "n/a"

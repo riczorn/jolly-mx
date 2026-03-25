@@ -6,8 +6,8 @@
 # The service will look for this file in /etc/postfix/jolly-mx.yaml first,
 # and then in its local directory, unless overridden by the `-c` parameter.
 #
-# This sample configuration assumes your server sends mail from the example.com
-# domain; some of the recipients are in subdomains of example.net.
+# This sample configuration assumes your server sends mail from the
+# example.com domain.
 #
 # the purpose of this example configuration is to handle:
 #
@@ -36,6 +36,7 @@
 config:
   # if not enabled, it will always respond "DUNNO", but it will log
   # its choices. Useful for debugging before going live.
+  # DUNNO tells Postfix to ignore the response and continue processing the file.
   enabled: false
 
   # unless the path is absolute, this will default to the
@@ -65,6 +66,10 @@ config:
   # automatically populate local domains from /etc/postfix/virtual
   auto_populate_local_domains: true
   virtual_file: /etc/postfix/virtual
+
+  # if you use authenticated senders, reject the email if the sender address
+  # does not match the sasl_username to prevent spoofing
+  reject_sender_login_mismatch: false
 
 servers:
   names:

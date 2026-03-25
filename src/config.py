@@ -27,7 +27,7 @@ def log_to_file(message):
     if config.logger:
         config.logger.info(message)
 
-def log_request(sender, recipient, group, mx, action, request_data=None, direction="", client_address=""):
+def log_request(sender, recipient, group, mx, action, request_data=None, direction="", client_address="", sasl_username=""):
     """Per-request output to console and log file.
     
     Console: always shows summary line; verbose adds postfix payload.
@@ -36,6 +36,8 @@ def log_request(sender, recipient, group, mx, action, request_data=None, directi
     summary = f"{sender}\t{recipient}\t{group}\t{mx}\t{action}\t{client_address}"
     if direction:
         summary += f"\t{direction}"
+    if sasl_username and sasl_username != sender:
+        summary += f"\t(sasl:{sasl_username})"
 
     if config.verbose and request_data:
         # Console: show postfix payload + summary
@@ -143,10 +145,12 @@ class Config:
         self.config_obj = None
         self.servers = []
         self.logger = False
+        self.csv_file = None
         self.csv_buffer = []
         self.csv_lock = threading.Lock()
         self.csv_flush_thread = None
         self.enabled = False
+        self.reject_sender_login_mismatch = False
         self.allowed_ips = set()  # resolved set of allowed IPs (empty = allow all)
         self.local_networks = []
         self.local_domains = []
@@ -253,6 +257,7 @@ class Config:
                 
             cfg = self.config_dict['config']
             self.enabled = cfg.get('enabled', self.enabled)
+            self.reject_sender_login_mismatch = cfg.get('reject_sender_login_mismatch', self.reject_sender_login_mismatch)
             self.log_file = cfg.get('log_file', '/var/log/jolly-mx.log')
             self.csv_file = cfg.get('csv_file', '/var/log/jolly-mx-messages.csv')
             self.verbose = cfg.get('verbose', self.verbose)
@@ -332,7 +337,7 @@ class Config:
                         self.servers_default_action = "DUNNO"
 
             # Load combined rules
-            self.combined_rule_groups = self.obj_dic({})
+            self.combined_rule_groups = {}
             if 'combined_rules' in self.config_dict and self.config_dict['combined_rules']:
                 log_debug("# Combined Rules")
                 combined_rules = {}
@@ -357,8 +362,9 @@ class Config:
                     if server_group_array:
                         server_group_dict = self.obj_dic(server_group_array)
                         combined_rules[combined_key] = Servers(server_group_dict)
-                
-                self.combined_rule_groups = self.obj_dic(combined_rules)
+                    
+                if combined_rules:
+                    self.combined_rule_groups = combined_rules
 
             log_debug("Config.loaded\n")
 
@@ -497,19 +503,21 @@ class Config:
         log_to_file(output)
         return output
 
-    def print_csv(self, sender, recipient, mx_group, mx_host, direction="", client_address=""):
-        if hasattr(self, 'csv_file') and self.csv_file:
+    def print_csv(self, sender, recipient, mx_group, mx_host, direction="", client_address="", sasl_username=""):
+        if self.csv_file:
             now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             csv_line = f"{now_str};{sender};{recipient};{mx_group};{mx_host};{client_address}"
             if direction:
                 csv_line += f";{direction}"
+            if sasl_username and sasl_username != sender:
+                csv_line += f";sasl:{sasl_username}"
             csv_line += "\n"
             with self.csv_lock:
                 self.csv_buffer.append(csv_line)
 
     def flush_csv(self):
         """Write all buffered CSV lines to disk."""
-        if not hasattr(self, 'csv_file') or not self.csv_file:
+        if not self.csv_file:
             return
         with self.csv_lock:
             if not self.csv_buffer:

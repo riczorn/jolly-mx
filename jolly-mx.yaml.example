@@ -54,6 +54,7 @@ config:
   bind_port: 9732
 
   # restrict which remote servers may connect (IPv4, IPv6, or DNS names)
+  # to this service.
   # leave empty or set to 0.0.0.0 to accept from all
   allowed_hosts: [127.0.0.1]
 
@@ -61,10 +62,13 @@ config:
   # otherwise, only the listed domains will be accepted.
   local_domains: []
 
-  # If true, domains will be dynamically read from a postfix virtual file
-  # by extracting lines that don't contain '@' and taking the first field
-  auto_populate_local_domains: false
+  # automatically populate local domains from /etc/postfix/virtual
+  auto_populate_local_domains: true
   virtual_file: /etc/postfix/virtual
+
+  # if you use authenticated senders, reject the email if the sender address
+  # does not match the sasl_username
+  reject_sender_login_mismatch: false
 
 servers:
   names:
@@ -100,7 +104,7 @@ servers:
     microsoft: [mx2, mx4]
     microbad: [mx7]
 
-  default: good
+  default: DUNNO
 
 sender_rules:
   # the order of the rules is important:

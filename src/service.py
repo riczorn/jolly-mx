@@ -161,6 +161,16 @@ class PolicyService:
             self.send_response(conn, action)
             return
 
+        if self.config.reject_sender_login_mismatch and mail_direction == "OUTGOING" and sasl_username and sasl_username != sender:
+            action = f"REJECT Sender address {sender} does not match login {sasl_username}"
+            if not self.config.enabled:
+                action = "DUNNO"
+                
+            self.config.print_csv(sender, recipient, "REJECT_LOGIN_MISMATCH", "n/a", direction="REJECTED", client_address=client_address, sasl_username=sasl_username)
+            log_request(sender, recipient, "REJECT_LOGIN_MISMATCH", "n/a", action, request_data, direction="REJECTED", client_address=client_address, sasl_username=sasl_username)
+            self.send_response(conn, action)
+            return
+
         if mail_direction == "OUTGOING":
             # invoke jolly-mx.py:get_mx_for_message()
             mx, group = self.request_handler(sender, recipient, self.config.cache_ttl)

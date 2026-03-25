@@ -12,14 +12,15 @@ PROJECT_DIR = os.path.dirname(SCRIPT_DIR)
 APP_PATH = os.path.join(PROJECT_DIR, 'jolly-mx.py')
 PORT = 10101
 
-def create_test_config(servers_default='good'):
+def create_test_config(servers_default='good', reject_sender_login_mismatch=False):
     config_data = {
         'config': {
             'enabled': True,
             'log_file': '/var/log/jolly-mx.log',
             'bind_host': '127.0.0.1',
             'bind_port': PORT,
-            'verbose': True
+            'verbose': True,
+            'reject_sender_login_mismatch': reject_sender_login_mismatch
         },
         'servers': {
             'names': {
@@ -158,6 +159,53 @@ def test_default_fallback():
             server_proc.wait()
             os.remove(config_path)
 
+def test_reject_sender_login_mismatch():
+    print("\n--- Verifying Enforce Login ---")
+    config_path = create_test_config(reject_sender_login_mismatch=True)
+    server_proc = start_server(config_path)
+    
+    try:
+        # Test Case 1: Matching login
+        print("Test 1: matching sender and sasl")
+        resp1 = send_request('good.sender@example.com', 'user@libero.it')
+        print(f"  Response: {resp1}")
+        assert "FILTER relay:[mx1.example.com]:25" in resp1
+        
+        # Test Case 2: Mismatched login
+        print("Test 2: mismatched sender and sasl")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect(('127.0.0.1', PORT))
+            request = "request=smtpd_access_policy\nsasl_username=different@example.com\nprotocol_state=RCPT\nprotocol_name=SMTP\nsender=good.sender@example.com\nrecipient=user@libero.it\n\n"
+            s.sendall(request.encode('utf-8'))
+            
+            response = b""
+            while True:
+                data = s.recv(1024)
+                if not data:
+                    break
+                response += data
+                if b"\n\n" in response:
+                    break
+                    
+            resp2 = response.decode('utf-8').strip()
+            print(f"  Response: {resp2}")
+            assert "REJECT Sender address good.sender@example.com does not match login different@example.com" in resp2
+
+        print("  ✅ Passed")
+    except Exception as e:
+        print(f"\n❌ Verification Failed: {e}")
+        if server_proc.poll() is not None:
+            stdout, stderr = server_proc.communicate()
+            print(f"Server STDERR: {stderr.decode('utf-8')}")
+        server_proc.terminate()
+        os.remove(config_path)
+        sys.exit(1)
+    finally:
+        server_proc.terminate()
+        server_proc.wait()
+        os.remove(config_path)
+
 if __name__ == '__main__':
     test_combined_rules()
     test_default_fallback()
+    test_reject_sender_login_mismatch()
