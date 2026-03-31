@@ -391,7 +391,7 @@ class Config:
 
     def test_domain_rules(self, email, domain, rule_type="sender_rules"):
         if not hasattr(self.config_obj, rule_type): return False, False
-        rules_dict = self.config_dict.get(rule_type, {})
+        rules_dict = self.config_dict.get(rule_type) or {}
         rules = [r for r in rules_dict if not r.startswith('__')]
         
         default = False

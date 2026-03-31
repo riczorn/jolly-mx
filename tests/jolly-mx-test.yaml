@@ -63,6 +63,10 @@ config:
   # otherwise, only the listed domains will be accepted.
   local_domains: []
 
+  # list of local networks authorized to relay through this server; any email from them
+  # will be treated as outgoing.
+  local_networks: []
+
   # automatically populate local domains from /etc/postfix/virtual
   auto_populate_local_domains: true
   postfix_virtual_file: /etc/postfix/virtual
