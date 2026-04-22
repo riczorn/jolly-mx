@@ -4,6 +4,8 @@ import sys
 import datetime
 import threading
 import ipaddress
+import json
+import socket as _socket_module
 
 config = None
 
@@ -163,6 +165,15 @@ class Config:
         self.config_file = 'jolly-mx.yaml'
         self.auto_populate_local_domains = False
         self.postfix_virtual_file = ''
+        self.graylog_server = None
+        self.graylog_port = 12201
+        self.servername = None
+        self._graylog_sock = None
+        self.servers_obj = None
+        self.server_groups = self.obj_dic({})
+        self.servers_default_obj = None
+        self.servers_default_action = "DUNNO"
+        self.combined_rule_groups = {}
         self.parse_args()
 
     def setup_custom_logger(self, name, filename):
@@ -259,7 +270,12 @@ class Config:
             self.enabled = cfg.get('enabled', self.enabled)
             self.reject_sender_login_mismatch = cfg.get('reject_sender_login_mismatch', self.reject_sender_login_mismatch)
             self.log_file = cfg.get('log_file', '/var/log/jolly-mx.log')
-            self.csv_file = cfg.get('csv_file', '/var/log/jolly-mx-messages.csv')
+            self.csv_file = cfg.get('csv_file', None) or None
+            self.graylog_server = cfg.get('graylog_server', None) or None
+            self.graylog_port = int(cfg.get('graylog_port', 12201))
+            self.servername = cfg.get('servername', None) or None
+            if self.graylog_server:
+                self._graylog_sock = _socket_module.socket(_socket_module.AF_INET, _socket_module.SOCK_DGRAM)
             self.verbose = cfg.get('verbose', self.verbose)
             
             # Resolve allowed_clients to a set of IPs
@@ -490,6 +506,8 @@ class Config:
         return False
 
     def print_usage(self):
+        if not self.servers_obj:
+            return "(no servers loaded)"
         output = "\nAll Servers\n"
         output += self.servers_obj.print()
         
@@ -536,3 +554,32 @@ class Config:
                 self.flush_csv()
         self.csv_flush_thread = threading.Thread(target=_flush_loop, daemon=True)
         self.csv_flush_thread.start()
+
+    def send_to_graylog(self, sender, recipient, mx_group, mx_host, direction="", client_address="", sasl_username=""):
+        if not self.graylog_server or not self._graylog_sock:
+            return
+        domain = recipient.split('@')[-1] if '@' in recipient else "unknown"
+        sasl_info = sasl_username if (sasl_username and sasl_username != sender) else ""
+        payload = {
+            "version": "1.1",
+            "host": self.servername or "jolly-mx",
+            "short_message": f"Jolly MX > Mail routed from {sender}",
+            "full_message": f"Mail to {recipient} via {mx_host}",
+            "level": 6,
+            "_sender": sender,
+            "_recipient": recipient,
+            "_mx_group": mx_group,
+            "_mx_host": mx_host,
+            "_direction": direction,
+            "_client_address": client_address,
+            "_sasl_username": sasl_info,
+            "_domain": domain,
+        }
+        try:
+            print("SENDING LOG-----------------")
+            self._graylog_sock.sendto(
+                json.dumps(payload).encode('utf-8'),
+                (self.graylog_server, self.graylog_port)
+            )
+        except Exception as e:
+            log(f"WARNING: Graylog send failed: {e}", to_stderr=True)

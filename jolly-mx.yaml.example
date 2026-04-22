@@ -48,6 +48,11 @@ config:
   # save a csv file in the format: date;sender;recipient;mx_group;mx_host
   csv_file: /var/log/jolly-mx-messages.csv
 
+  # Graylog GELF/UDP logging. Leave graylog_server empty to disable.
+  # graylog_server: log.example.com
+  # graylog_port: 12201
+  # servername: mx1-myhostname
+
   # log payloads and results to the log file
   verbose: true
 

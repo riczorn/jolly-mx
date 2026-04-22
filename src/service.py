@@ -143,12 +143,12 @@ class PolicyService:
         group = "n/a"
         
         # Determine direction
-        if sasl_username:
+        if self.config.is_local_domain(recipient_domain):
+            mail_direction = "INCOMING"
+        elif sasl_username:
             mail_direction = "OUTGOING"
         elif self.config.is_local_client(client_address):
             mail_direction = "OUTGOING"
-        elif self.config.is_local_domain(recipient_domain):
-            mail_direction = "INCOMING"
         else:
             # Open relay attempt!
             if self.config.enabled:
@@ -157,6 +157,7 @@ class PolicyService:
                 action = "DUNNO"
             
             self.config.print_csv(sender, recipient, "OPEN_RELAY", "n/a", direction="REJECTED", client_address=client_address, sasl_username=sasl_username)
+            self.config.send_to_graylog(sender, recipient, "OPEN_RELAY", "n/a", direction="REJECTED", client_address=client_address, sasl_username=sasl_username)
             log_request(sender, recipient, "OPEN_RELAY", "n/a", action, request_data, direction="REJECTED", client_address=client_address, sasl_username=sasl_username)
             self.send_response(conn, action)
             return
@@ -167,6 +168,7 @@ class PolicyService:
                 action = "DUNNO"
                 
             self.config.print_csv(sender, recipient, "REJECT_LOGIN_MISMATCH", "n/a", direction="REJECTED", client_address=client_address, sasl_username=sasl_username)
+            self.config.send_to_graylog(sender, recipient, "REJECT_LOGIN_MISMATCH", "n/a", direction="REJECTED", client_address=client_address, sasl_username=sasl_username)
             log_request(sender, recipient, "REJECT_LOGIN_MISMATCH", "n/a", action, request_data, direction="REJECTED", client_address=client_address, sasl_username=sasl_username)
             self.send_response(conn, action)
             return
@@ -208,6 +210,7 @@ class PolicyService:
         #     action = f"FILTER {mx}"         
 
         self.config.print_csv(sender, recipient, group, mx_host, direction=mail_direction, client_address=client_address, sasl_username=sasl_username)
+        self.config.send_to_graylog(sender, recipient, group, mx_host, direction=mail_direction, client_address=client_address, sasl_username=sasl_username)
         log_request(sender, recipient, group, mx_host, action, request_data, direction=mail_direction, client_address=client_address, sasl_username=sasl_username)
 
         self.send_response(conn, action)
